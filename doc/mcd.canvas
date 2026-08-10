@@ -1,0 +1,6 @@
+{
+	"nodes":[
+		{"id":"d5a02ab6c0fb9995","x":-171,"y":-294,"width":551,"height":474,"type":"text","text":"# user\n\n- `id uuid pk default gen_random_uuid()`\n- `username varchar(50) unique not null`\n- `email varchar(100) unique not null`\n- `password varchar(255) not null`\n- `first_name varchar(100) not null`\n- `last_name varchar(100) not null`\n- `role enum('ADMIN', 'CUSTOMER') default 'CUSTOMER'`\n- `verified boolean default false`\n- `created_at timestampz default now()`\n- `upated_at timestampz`"}
+	],
+	"edges":[]
+}
