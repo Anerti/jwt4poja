@@ -2,8 +2,6 @@ package com.techindna.anerti.validator;
 
 import com.techindna.anerti.dto.LoginInput;
 import com.techindna.anerti.dto.RegisterInput;
-import com.techindna.anerti.dto.UpdateUserInput;
-import com.techindna.anerti.dto.UserFilters;
 import com.techindna.anerti.exception.http.UnprocessableContentException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;

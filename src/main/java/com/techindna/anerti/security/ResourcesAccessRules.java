@@ -2,7 +2,6 @@ package com.techindna.anerti.security;
 
 import com.techindna.anerti.entity.enums.UserRole;
 import com.techindna.anerti.exception.http.ForbiddenException;
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
