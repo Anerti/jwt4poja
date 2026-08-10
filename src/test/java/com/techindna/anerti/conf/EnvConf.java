@@ -24,5 +24,8 @@ public class EnvConf {
     registry.add(
         "spring.data.redis.url",
         () -> "redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379));
+    registry.add("app.jwt.secret", () -> "2qdeDHejlEEpEzwcE1DEOAqoY7JOw0HOqROW+FLYAXY=");
+    registry.add("app.jwt.expiration-ms", () -> "3600000");
+    registry.add("app.base-url", () -> "http://localhost:8080");
   }
 }
