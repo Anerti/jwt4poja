@@ -4,6 +4,7 @@ import com.techindna.anerti.exception.ErrorBody;
 import com.techindna.anerti.security.jwt.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -33,6 +34,8 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/auth/**", "/ping", "/health/email", "/health/bucket")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/users")
+                    .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
