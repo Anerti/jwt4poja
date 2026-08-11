@@ -6,30 +6,23 @@ info:
     JWT authentication template API — POJA-generated Spring Boot app
     (package `com.techindna.anerti`, schema `jwt4poja_app`).
 
-    Auth endpoints (`/auth/**`) are public and implemented: register/login with
-    email verification, JWT bearer tokens (jjwt 0.12, HMAC-signed).
+    Auth endpoints (`/auth/**`) are public. Users endpoints (`/users/**`)
+    require a JWT; `GET /users` is implemented, the rest are planned.
 
-    Users endpoints (`/users/**`) describe the intended API contract but are
-    NOT yet implemented in code — see README.
-
-    Roles: `CUSTOMER` (default) and `ADMIN` (DB enum `jwt4poja_app.user_role`).
+    Roles: `CUSTOMER` (default) and `ADMIN`.
 servers:
   - url: http://localhost:8080
 tags:
   - name: auth
-    description: Registration, login and email verification (public — no token required)
+    description: Registration, login and email verification (public)
   - name: users
-    description: User management (JWT required; ADMIN for listing, owner or ADMIN for single-user ops)
+    description: User management (JWT required)
 paths:
   /auth/register:
     post:
       tags: [auth]
       summary: Register a new user
-      description: |
-        Creates a CUSTOMER account (role is fixed server-side, never taken from
-        the payload), stores a 15-minute verification token in Redis and sends a
-        verification email (EventBridge -> SQS -> SES, template
-        `templates/mail/verification.html`).
+      description: Creates a CUSTOMER account and sends a verification email.
       operationId: register
       requestBody:
         required: true
@@ -54,11 +47,7 @@ paths:
     post:
       tags: [auth]
       summary: Login and request a verification link
-      description: |
-        Checks credentials (username or email + password, Argon2). Does NOT issue
-        a token directly: sends a login-verification link by email (template
-        `templates/mail/login-verification.html`); the token in that link is
-        exchanged via `/auth/verification/{token}`.
+      description: Checks credentials and sends a login-verification email.
       operationId: login
       requestBody:
         required: true
@@ -83,6 +72,7 @@ paths:
     post:
       tags: [auth]
       summary: Resend the email-verification link
+      description: Re-sends the verification email to an unverified account.
       operationId: resendVerificationLink
       parameters:
         - name: email
@@ -107,10 +97,9 @@ paths:
       tags: [auth]
       summary: Verify the email token and obtain a JWT
       description: |
-        Single-use token (15-minute TTL in Redis). On success marks the user
-        verified and returns a JWT (subject = user id, claim `role` =
-        CUSTOMER|ADMIN) plus the user payload. The same endpoint serves both
-        registration and login verification.
+        Single-use token (15-minute TTL). Marks the user verified and returns a
+        JWT plus the user payload. Serves both registration and login
+        verification.
       operationId: verify
       parameters:
         - name: token
@@ -135,54 +124,41 @@ paths:
       tags: [users]
       summary: List users (ADMIN only)
       description: |
-        Planned — controller NOT yet implemented. Intended contract: ADMIN can
-        list CUSTOMER users (`ResourcesAccessRules.grantListUsersAccess`), with
-        optional filters and Spring Data pagination.
+        Lists CUSTOMER users. `search` matches username, first name, last name
+        or email (case-insensitive substring). One-based `page` (default 1;
+        values below 1 fall back to the default). `size` (default 10, max 100;
+        values below 1 fall back to the default, values above 100 are capped).
+        `sort` direction applied to `createdAt` (default `ASC`).
       operationId: listUsers
       security:
         - bearerAuth: []
       parameters:
-        - name: username
+        - name: search
           in: query
           required: false
           schema:
             type: string
-        - name: firstName
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: lastName
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: email
-          in: query
-          required: false
-          schema:
-            type: string
-            format: email
         - name: page
           in: query
           required: false
-          description: Zero-based page index (default 0)
           schema:
             type: integer
-            default: 0
+            default: 1
         - name: size
           in: query
           required: false
-          description: Page size (default 20)
           schema:
             type: integer
-            default: 20
+            minimum: 1
+            maximum: 100
+            default: 10
         - name: sort
           in: query
           required: false
-          description: Sort expression, e.g. `createdAt,desc`
           schema:
             type: string
+            enum: [ASC, DESC]
+            default: ASC
       responses:
         '200':
           description: Page of users
@@ -198,10 +174,7 @@ paths:
     get:
       tags: [users]
       summary: Get a user by id
-      description: |
-        Planned — controller NOT yet implemented. Intended contract: owner of
-        the profile or ADMIN (`ResourcesAccessRules.grantAccessFor`; ADMIN
-        cannot access another ADMIN's profile).
+      description: Not implemented yet. Owner or ADMIN (ADMIN cannot access another ADMIN).
       operationId: getUser
       security:
         - bearerAuth: []
@@ -228,10 +201,7 @@ paths:
     patch:
       tags: [users]
       summary: Partially update a user profile
-      description: |
-        Planned — controller NOT yet implemented. Intended contract: owner or
-        ADMIN; updates only the fields present in the payload
-        (`UserMapper.applyUpdate`).
+      description: Not implemented yet. Owner or ADMIN; only present fields are applied.
       operationId: updateUser
       security:
         - bearerAuth: []
@@ -266,9 +236,7 @@ paths:
     delete:
       tags: [users]
       summary: Delete a user account
-      description: |
-        Planned — controller NOT yet implemented. Intended contract: owner or
-        ADMIN (same access rule as GET and PATCH).
+      description: Not implemented yet. Owner or ADMIN (same rule as GET and PATCH).
       operationId: deleteUser
       security:
         - bearerAuth: []
@@ -294,22 +262,22 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: JWT returned by `GET /auth/verification/{token}` (subject = user id, claim `role` = CUSTOMER|ADMIN)
+      description: JWT from `GET /auth/verification/{token}` (subject = user id, claim `role`)
   responses:
     BadRequest:
-      description: Malformed request (e.g. invalid parameter format)
+      description: Malformed request
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
     Unauthorized:
-      description: Missing/invalid JWT, bad credentials, or invalid verification token
+      description: Missing/invalid JWT or bad credentials
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
     Forbidden:
-      description: Authenticated but not allowed (wrong role, not owner, account not verified)
+      description: Authenticated but not allowed
       content:
         application/json:
           schema:
@@ -327,7 +295,7 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorBody'
     UnprocessableContent:
-      description: Validation failed (field rules, password policy, mismatched passwords)
+      description: Validation failed
       content:
         application/json:
           schema:
@@ -371,7 +339,7 @@ components:
           type: string
           format: password
           minLength: 12
-          description: At least 12 chars with one uppercase, one lowercase, one digit and one special char
+          description: 12+ chars with upper, lower, digit and special char
         confirmPassword:
           type: string
           format: password
@@ -386,7 +354,7 @@ components:
     LoginInput:
       type: object
       required: [password]
-      description: Either `username` or `email` (or both) plus `password`
+      description: Either `username` or `email` plus `password`
       properties:
         username:
           type: string
@@ -408,7 +376,7 @@ components:
       properties:
         token:
           type: string
-          description: JWT (HMAC-signed; subject = user id, claim `role`)
+          description: JWT (subject = user id, claim `role`)
         user:
           $ref: '#/components/schemas/User'
     UpdateUserInput:

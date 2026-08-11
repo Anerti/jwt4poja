@@ -38,11 +38,16 @@ Full OpenAPI spec: [`doc/api.yml`](doc/api.yml).
 Flow: register/login → 15-min single-use token in Redis → email link →
 `GET /auth/verification/{token}` → JWT (subject = user id, `role` claim).
 
-### Specified but not yet implemented — users (`/users/**`, JWT required)
+### Implemented — users (`/users/**`, JWT required)
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/users` | List users (ADMIN; filters + pagination) |
+| `GET` | `/users` | List users (ADMIN; CUSTOMER-only, `search` matches username/first/last/email, 1-based pagination: `page` default 1, `size` default 10 max 100, `sort` ASC\|DESC default ASC on `createdAt`) |
+
+### Specified but not yet implemented — users (`/users/**`)
+
+| Method | Path | Description |
+| --- | --- | --- |
 | `GET` | `/users/{userId}` | Get user (owner or ADMIN) |
 | `PATCH` | `/users/{userId}` | Partial profile update (owner or ADMIN) |
 | `DELETE` | `/users/{userId}` | Delete account (owner or ADMIN) |
@@ -96,7 +101,9 @@ Note: `gradlew` has no exec bit in this repo — use `sh gradlew …`.
 
 Auth flow is covered by Testcontainers integration tests (PostgreSQL + Redis via
 `FacadeIT`) in `src/test/java/com/techindna/anerti/endpoint/rest/controller/auth/`:
-`RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`. Targeted run:
+`RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`. User listing is
+covered by `UserListIT` in `src/test/java/com/techindna/anerti/endpoint/rest/controller/users/`.
+Targeted run:
 
 ```bash
 sh gradlew test --tests "com.techindna.anerti.endpoint.rest.controller.auth.*"

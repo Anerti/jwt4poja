@@ -11,6 +11,7 @@ public class DataValidator {
       Pattern.compile("^[a-z0-9_.-]+@[a-z0-9_-]+(\\.[a-z]+){1,2}$");
   private static final Pattern NAME_FORMAT = Pattern.compile("^[A-Z][a-z-'éèê ]{2,}$");
   private static final Pattern USERNAME_FORMAT = Pattern.compile("^[a-zA-Z_0-9-]{2,}$");
+  private static final Pattern SEARCH_FORMAT = Pattern.compile("^[a-zA-Z0-9_@.'éèê -]+$");
 
   public void checkNullData(String field, String value) {
     if (value == null || value.isBlank()) {
@@ -23,6 +24,18 @@ public class DataValidator {
     if (value != null && value.length() > maxLength) {
       throw new UnprocessableContentException(
           String.format("%s must not exceed %s characters", field, maxLength));
+    }
+  }
+
+  public void validateSearchString(String value) {
+    checkStringLength("search", value, 100);
+
+    if (value != null && !value.isBlank() && !SEARCH_FORMAT.matcher(value).matches()) {
+      throw new UnprocessableContentException(
+          String.format(
+              "Search %s is invalid, it may only contain letters, numbers, spaces, and the"
+                  + " symbols @ _ . ' -",
+              value));
     }
   }
 
