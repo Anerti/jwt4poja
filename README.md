@@ -20,7 +20,7 @@ Two roles only, DB enum `jwt4poja_app.user_role`:
 | Role | Meaning |
 | --- | --- |
 | `CUSTOMER` | Default role for new registrations |
-| `ADMIN` | Privileged role (currently only used by the planned `/users/**` endpoints) |
+| `ADMIN` | Privileged role (`GET /users` is ADMIN-only; can read any CUSTOMER profile) |
 
 ## API
 
@@ -43,17 +43,16 @@ Flow: register/login → 15-min single-use token in Redis → email link →
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/users` | List users (ADMIN; CUSTOMER-only, `search` matches username/first/last/email, 1-based pagination: `page` default 1, `size` default 10 max 100, `sort` ASC\|DESC default ASC on `createdAt`) |
+| `GET` | `/users/{userId}` | Get user (owner or ADMIN; ADMIN cannot access another ADMIN; 404 if unknown) |
 
 ### Specified but not yet implemented — users (`/users/**`)
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/users/{userId}` | Get user (owner or ADMIN) |
 | `PATCH` | `/users/{userId}` | Partial profile update (owner or ADMIN) |
 | `DELETE` | `/users/{userId}` | Delete account (owner or ADMIN) |
 
-These are documented in `doc/api.yml` as the intended contract
-(`UserController`/`UserService`), but the controllers/services are not implemented yet.
+These are documented in `doc/api.yml` as the intended contract, but not implemented yet.
 `ResourcesAccessRules` (owner/role checks) and the mapper/validators are already in place.
 
 ### Health (POJA scaffold)
@@ -101,13 +100,15 @@ Note: `gradlew` has no exec bit in this repo — use `sh gradlew …`.
 
 Auth flow is covered by Testcontainers integration tests (PostgreSQL + Redis via
 `FacadeIT`) in `src/test/java/com/techindna/anerti/endpoint/rest/controller/auth/`:
-`RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`. User listing is
-covered by `UserListIT` in `src/test/java/com/techindna/anerti/endpoint/rest/controller/users/`.
-Targeted run:
+`RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`. User endpoints are
+covered by `UserListIT` and `UserGetIT` in `.../controller/users/`. Targeted run:
 
 ```bash
-sh gradlew test --tests "com.techindna.anerti.endpoint.rest.controller.auth.*"
+sh gradlew test --tests "com.techindna.anerti.endpoint.rest.controller.users.*"
 ```
+
+Every `test` run is finalized by `jacocoTestCoverageVerification` (LINE coverage,
+minimum 85%) + `jacocoTestReport`.
 
 ## Layout notes
 
