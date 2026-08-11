@@ -82,7 +82,7 @@ non-test local runs; the rest apply to tests too).
 ## Commands
 
 ```bash
-export JAVA_HOME=$HOME/.jdks/ms-21.0.12 && export PATH=$JAVA_HOME/bin:$PATH
+export JAVA_HOME=$HOME/.jdks/ms-21.0.11 && export PATH=$JAVA_HOME/bin:$PATH
 sh gradlew compileJava         # compile main sources
 sh gradlew compileTestJava     # compile tests
 sh gradlew test                # integration tests — needs Docker (Testcontainers:
@@ -91,6 +91,16 @@ sh gradlew test                # integration tests — needs Docker (Testcontain
 ```
 
 Note: `gradlew` has no exec bit in this repo — use `sh gradlew …`.
+
+## Tests
+
+Auth flow is covered by Testcontainers integration tests (PostgreSQL + Redis via
+`FacadeIT`) in `src/test/java/com/techindna/anerti/endpoint/rest/controller/auth/`:
+`RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`. Targeted run:
+
+```bash
+sh gradlew test --tests "com.techindna.anerti.endpoint.rest.controller.auth.*"
+```
 
 ## Layout notes
 
