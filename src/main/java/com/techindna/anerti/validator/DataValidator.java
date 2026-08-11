@@ -31,7 +31,9 @@ public class DataValidator {
     if (value != null && !value.isBlank() && !SEARCH_FORMAT.matcher(value).matches()) {
       throw new UnprocessableContentException(
           String.format(
-              "Search %s is invalid, only a-zA-Z0-9_@.'éèê - characters are allowed", value));
+              "Search %s is invalid, it may only contain letters, numbers, spaces, and the"
+                  + " symbols @ _ . ' -",
+              value));
     }
   }
 
