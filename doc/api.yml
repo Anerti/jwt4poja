@@ -125,9 +125,10 @@ paths:
       summary: List users (ADMIN only)
       description: |
         Lists CUSTOMER users. `search` matches username, first name, last name
-        or email (case-insensitive substring). One-based `page` (default 1),
-        `size` (default 10, max 100). `sort` direction applied to `createdAt`
-        (default `ASC`).
+        or email (case-insensitive substring). One-based `page` (default 1;
+        values below 1 fall back to the default). `size` (default 10, max 100;
+        values below 1 fall back to the default, values above 100 are capped).
+        `sort` direction applied to `createdAt` (default `ASC`).
       operationId: listUsers
       security:
         - bearerAuth: []
@@ -142,7 +143,6 @@ paths:
           required: false
           schema:
             type: integer
-            minimum: 1
             default: 1
         - name: size
           in: query

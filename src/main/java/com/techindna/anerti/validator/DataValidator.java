@@ -28,6 +28,8 @@ public class DataValidator {
   }
 
   public void validateSearchString(String value) {
+    checkStringLength("search", value, 100);
+
     if (value != null && !value.isBlank() && !SEARCH_FORMAT.matcher(value).matches()) {
       throw new UnprocessableContentException(
           String.format(

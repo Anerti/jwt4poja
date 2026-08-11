@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,16 +21,18 @@ public class UserService {
 
   private static final int DEFAULT_PAGE = 1;
   private static final int DEFAULT_SIZE = 10;
+  private static final int MAX_SIZE = 100;
 
   private final UserRepository userRepository;
   private final UserMapper userMapper;
   private final DataValidator dataValidator;
 
+  @Transactional(readOnly = true)
   public UserListResponse listUsers(String search, int page, int size, SortDirection sort) {
     dataValidator.validateSearchString(search);
 
     int effectivePage = page < 1 ? DEFAULT_PAGE : page;
-    int effectiveSize = size < 1 ? DEFAULT_SIZE : size;
+    int effectiveSize = size < 1 ? DEFAULT_SIZE : Math.min(size, MAX_SIZE);
 
     Page<JUser> jUsers =
         userRepository.searchUsers(

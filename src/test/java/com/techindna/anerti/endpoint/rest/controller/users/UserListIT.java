@@ -126,6 +126,20 @@ class UserListIT extends FacadeIT {
   }
 
   @Test
+  void blank_search_returns_all_users() {
+    saveUser("jdoe", "John", "Doe", UserRole.CUSTOMER);
+    saveUser("asmith", "Alice", "Smith", UserRole.CUSTOMER);
+    String adminToken = adminToken("root");
+
+    ResponseEntity<UserListResponse> response = listUsers(adminToken, "search=");
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().data())
+        .extracting(User::username)
+        .containsExactlyInAnyOrder("jdoe", "asmith");
+  }
+
+  @Test
   void invalid_search_is_unprocessable() {
     String adminToken = adminToken("root");
 
@@ -179,10 +193,31 @@ class UserListIT extends FacadeIT {
   }
 
   @Test
+  void size_above_max_is_capped() {
+    saveUser("jdoe", "John", "Doe", UserRole.CUSTOMER);
+    String adminToken = adminToken("root");
+
+    ResponseEntity<UserListResponse> response = listUsers(adminToken, "size=1000");
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody().meta().size()).isEqualTo(100);
+    assertThat(response.getBody().data()).extracting(User::username).containsExactly("jdoe");
+  }
+
+  @Test
   void invalid_sort_value_is_bad_request() {
     String adminToken = adminToken("root");
 
     ResponseEntity<String> response = listUsersRaw(adminToken, "sort=sideways");
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void non_numeric_page_is_bad_request() {
+    String adminToken = adminToken("root");
+
+    ResponseEntity<String> response = listUsersRaw(adminToken, "page=abc");
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
   }
