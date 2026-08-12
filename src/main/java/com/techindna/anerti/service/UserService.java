@@ -2,12 +2,16 @@ package com.techindna.anerti.service;
 
 import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.dto.UserListResponse;
+import com.techindna.anerti.entity.User;
 import com.techindna.anerti.entity.enums.SortDirection;
 import com.techindna.anerti.entity.enums.UserRole;
+import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.UserMapper;
 import com.techindna.anerti.repository.UserRepository;
 import com.techindna.anerti.repository.model.JUser;
+import com.techindna.anerti.security.ResourcesAccessRules;
 import com.techindna.anerti.validator.DataValidator;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +30,7 @@ public class UserService {
   private final UserRepository userRepository;
   private final UserMapper userMapper;
   private final DataValidator dataValidator;
+  private final ResourcesAccessRules resourcesAccessRules;
 
   @Transactional(readOnly = true)
   public UserListResponse listUsers(String search, int page, int size, SortDirection sort) {
@@ -48,5 +53,15 @@ public class UserService {
     return new UserListResponse(
         jUsers.getContent().stream().map(userMapper::toDomain).toList(),
         new Meta(effectivePage, effectiveSize, jUsers.getTotalElements()));
+  }
+
+  @Transactional(readOnly = true)
+  public User getUser(UUID userId) {
+    JUser jUser =
+        userRepository
+            .findById(userId)
+            .orElseThrow(() -> new NotFoundException(String.format("User %s not found", userId)));
+    resourcesAccessRules.grantAccessFor(userId, jUser.getRole());
+    return userMapper.toDomain(jUser);
   }
 }

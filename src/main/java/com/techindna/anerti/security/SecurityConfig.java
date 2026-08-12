@@ -32,8 +32,10 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/auth/**", "/ping", "/health/email", "/health/bucket")
+                auth.requestMatchers("/auth/**", "/ping")
                     .permitAll()
+                    .requestMatchers("/health/email", "/health/bucket")
+                    .hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/users")
                     .hasRole("ADMIN")
                     .anyRequest()

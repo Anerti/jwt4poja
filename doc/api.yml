@@ -7,7 +7,8 @@ info:
     (package `com.techindna.anerti`, schema `jwt4poja_app`).
 
     Auth endpoints (`/auth/**`) are public. Users endpoints (`/users/**`)
-    require a JWT; `GET /users` is implemented, the rest are planned.
+    require a JWT; `GET /users` and `GET /users/{userId}` are implemented,
+    the rest are planned.
 
     Roles: `CUSTOMER` (default) and `ADMIN`.
 servers:
@@ -174,7 +175,7 @@ paths:
     get:
       tags: [users]
       summary: Get a user by id
-      description: Not implemented yet. Owner or ADMIN (ADMIN cannot access another ADMIN).
+      description: Owner or ADMIN (ADMIN cannot access another ADMIN).
       operationId: getUser
       security:
         - bearerAuth: []

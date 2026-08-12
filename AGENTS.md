@@ -15,13 +15,14 @@ Guidance for AI coding agents working in this repository.
 
 **Auth flow implemented; everything else is POJA scaffold.** Hand-written auth layer on top of the generated scaffold (package root `com.techindna.anerti`, schema `jwt4poja_app`).
 
-- `doc/api.yml` — OpenAPI 3.0.3 spec: implemented auth endpoints (`/auth/**`) + users endpoints (`/users/**`) specified as the intended contract but **not yet implemented** (marked as such in the spec).
+- `doc/api.yml` — OpenAPI 3.0.3 spec: auth endpoints (`/auth/**`) plus `GET /users` and `GET /users/{userId}` are implemented; `PATCH`/`DELETE /users/{userId}` are specified as the intended contract but **not yet implemented** (marked as such in the spec).
 - **Auth endpoints** (hand-written, `endpoint/rest/controller/AuthController.java`): `POST /auth/register` (202 + verification email), `POST /auth/login` (202 + login-verification link), `POST /auth/resend-link` (202, `email` query param; 403 unknown/already-verified email — "No pending verification found for this email", 422 blank/invalid email, 400 missing param), `GET /auth/verification/{token}` (200 JWT + user, 401 invalid token).
+- **Users endpoints** (hand-written, `endpoint/rest/controller/UserController.java`): `GET /users` (ADMIN-only; lists CUSTOMER users, `search` substring on username/first/last/email, 1-based `page`/`size` with fallback/cap, `sort` ASC|DESC on `createdAt`), `GET /users/{userId}` (owner or ADMIN — ADMIN cannot access another ADMIN; enforced via `ResourcesAccessRules.grantAccessFor(id, role)`, 404 unknown id, 400 malformed UUID).
 - **Generated health endpoints:** `GET /ping`, `GET /health/email`, `GET /health/bucket`.
-- **Hand-written layer** (all ported, none carry `@PojaGenerated`): `service/AuthService` + `service/VerificationCodeStore` (Redis 15-min tokens), `security/` (JWT: `JwtTokenProvider`, `JwtAuthenticationFilter`, `SecurityConfig`; `ResourcesAccessRules`), `repository/AuthRepository` + `repository/model/JUser`, `mapper/UserMapper`, `validator/DataValidator` + `UserValidator`, `exception/` (`ErrorBody` + `GlobalExceptionHandler` + `http/*`), `entity/User` + `entity/enums/UserRole`, `dto/` (`RegisterInput`, `LoginInput`, `MessageBody`, `VerifyRegistrationResponse`, `UpdateUserInput`, `UserFilters`), `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService`, mail templates `resources/templates/mail/{verification,login-verification}.html`.
+- **Hand-written layer** (all ported, none carry `@PojaGenerated`): `endpoint/rest/controller/{AuthController,UserController}` + `service/{AuthService,UserService}` + `service/VerificationCodeStore` (Redis 15-min tokens), `security/` (JWT: `JwtTokenProvider`, `JwtAuthenticationFilter`, `SecurityConfig`; `ResourcesAccessRules`), `repository/{AuthRepository,UserRepository}` + `repository/model/JUser`, `mapper/UserMapper`, `validator/DataValidator` + `UserValidator`, `exception/` (`ErrorBody` + `GlobalExceptionHandler` + `http/*`), `entity/User` + `entity/enums/UserRole`, `dto/` (`RegisterInput`, `LoginInput`, `MessageBody`, `VerifyRegistrationResponse`, `UpdateUserInput`), `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService`, mail templates `resources/templates/mail/{verification,login-verification}.html`.
 - **DB:** `resources/db/migration/V1__init.sql` — native DDL (`user_role` enum `CUSTOMER`/`ADMIN` + `user` table, schema `jwt4poja_app`, default role `CUSTOMER`); applied manually, not via Flyway. `src/test/resources/test-init.sql` mirrors it for Testcontainers (user table only — no other domains are ported; its `username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50).
-- **ITs:** `src/test/.../endpoint/rest/controller/auth/` — `RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`.
-- **Out of scope / not implemented:** movies, projections, rooms, and `GET /users` user management; `SecurityConfig` gates only `/auth/**` + health endpoints (no admin-role routes).
+- **ITs:** `src/test/.../endpoint/rest/controller/auth/` — `RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`; `.../users/` — `UserListIT`, `UserGetIT`.
+- **Out of scope / not implemented:** movies, projections, rooms, and `PATCH`/`DELETE /users/{userId}`. `SecurityConfig`: `/auth/**` + `/ping` `permitAll`, `/health/email` + `/health/bucket` and `GET /users` ADMIN-only, everything else authenticated (per-resource owner/role checks live in `ResourcesAccessRules`, not the filter chain).
 - `README.md` documents the project (stack, roles, API, env, commands); `.github/workflows/release-version.yml` references a `gradle.properties` that does not exist in this repo (generated workflow quirk — leave it).
 
 ## Commands
@@ -36,7 +37,7 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 
 - `gradlew` is committed **without the exec bit** — use `sh gradlew …` locally (CI does `chmod +x` itself).
 - Java must be ≤ 21 — Gradle rejects newer JDKs. Use the JDK export above.
-- `sh gradlew test` needs **Docker + Testcontainers** (`FacadeIT` base class); CI runs `./gradlew test` on Java 21 corretto. The test env spins up `postgres:16-alpine` + `redis:7-alpine` via `conf/EnvConf`. Any `test` invocation is finalized by `jacocoTestCoverageVerification` + `jacocoTestReport` (LINE coverage, minimum 0).
+- `sh gradlew test` needs **Docker + Testcontainers** (`FacadeIT` base class); CI runs `./gradlew test` on Java 21 corretto. The test env spins up `postgres:16-alpine` + `redis:7-alpine` via `conf/EnvConf`. Any `test` invocation is finalized by `jacocoTestCoverageVerification` + `jacocoTestReport` (LINE coverage, minimum 0.85; full suite currently ~87% — a targeted `--tests` run alone does NOT meet the gate).
 - `format.sh` needs `java` on PATH (same JDK export).
 
 ## Conventions
@@ -58,6 +59,6 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 
 ## Git
 
-- Branches: `test-post-resend-link` (current work branch), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
+- Branches: `get-users-id` (current work branch), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
 - History: Poja auto-commits (`poja: deployment ID: …`). Hand-written work follows short conventional commits (`feat:`/`docs:`/`build:`/`refactor:`/`chore:`), typically one per file; multi-file endpoint features may bundle in one `feat:` commit.
 - Don't commit, push, or rewrite history unless asked.
