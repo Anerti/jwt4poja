@@ -1,6 +1,6 @@
 package com.techindna.anerti.entity;
 
-import com.techindna.anerti.entity.enums.UserRole;
+import com.techindna.anerti.repository.enums.UserRole;
 import java.time.Instant;
 import java.util.UUID;
 

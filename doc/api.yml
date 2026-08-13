@@ -19,9 +19,9 @@ tags:
   - name: exams
     description: Exams per course and academic year (ADMIN manages, TEACHER reads)
   - name: teachers
-    description: Teacher accounts and teacher extensions (ADMIN)
+    description: Teacher accounts and teacher inheritance records (ADMIN)
   - name: students
-    description: Student accounts and student extensions (ADMIN; owner read)
+    description: Student accounts and student inheritance records (ADMIN; owner read)
   - name: classes
     description: Student groups/classes (ADMIN manages, TEACHER reads)
   - name: assignments
@@ -488,8 +488,8 @@ paths:
       summary: Create a teacher (ADMIN)
       description: |
         Creates the underlying user account (role `TEACHER`) and its teacher
-        extension in one operation. `username`, `email` and `ref` must be
-        unique.
+        inheritance record in one operation. `username`, `email` and `ref` must
+        be unique.
       operationId: createTeacher
       security:
         - bearerAuth: []
@@ -644,7 +644,7 @@ paths:
       summary: Create a student (ADMIN)
       description: |
         Creates the underlying user account (role `STUDENT`) and its student
-        extension in one operation. Students are not created through
+        inheritance record in one operation. Students are not created through
         self-registration — an `ADMIN` provisions them. `username`, `email` and
         `ref` must be unique.
       operationId: createStudent
@@ -681,7 +681,7 @@ paths:
       description: |
         Lists students. `search` matches `ref`, first name or last name
         (case-insensitive substring, partial match). `learningPath`,
-        `studentStatus` and `promotionName` are exact-match filters.
+        `studentStatus` and `className` are exact-match filters.
       operationId: listStudents
       security:
         - bearerAuth: []
@@ -701,7 +701,7 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/StudentStatus'
-        - name: promotionName
+        - name: className
           in: query
           required: false
           schema:
@@ -770,8 +770,8 @@ paths:
       summary: Partially update a student (ADMIN)
       description: |
         Only present fields are applied. Marking a student `GRADUATED` with a
-        `graduationYear` and `promotionName` adds them to that promotion's
-        graduation list. A `ref` or `promotionName` change must stay unique.
+        `graduationYear` sets their graduation year. A `ref` or `className`
+        change must stay unique.
       operationId: updateStudent
       security:
         - bearerAuth: []
@@ -1032,7 +1032,7 @@ paths:
       summary: List teacher-course assignments
       description: |
         Lists assignments ordered by `assignedAt`. Each item embeds the full
-        teacher user (with its extension) and the full course. ADMIN sees all
+        teacher user (with its inheritance record) and the full course. ADMIN sees all
         assignments; a TEACHER only sees the courses assigned to themselves.
         `teacherId` and `courseId` are exact-match filters.
       operationId: listTeacherCourses
@@ -1149,7 +1149,7 @@ paths:
       summary: List student-class enrollments
       description: |
         Lists enrollments. Each item embeds the full student user (with its
-        extension) and the full class. `studentId` and `classId` are exact-match
+        inheritance record) and the full class. `studentId` and `classId` are exact-match
         filters. ADMIN sees all enrollments; a TEACHER sees only the students
         enrolled in classes (groups) they need for their courses.
       operationId: listStudentClasses
@@ -1608,6 +1608,10 @@ components:
     UserRole:
       type: string
       enum: [ADMIN, TEACHER, STUDENT]
+    Level:
+      type: string
+      enum: [L1, L2, L3]
+      description: Academic level a student belongs to.
     LearningPath:
       type: string
       enum: [EL, TN, COMMON]
@@ -1853,32 +1857,37 @@ components:
           format: date-time
       example:
         coefficient: 0.2
-    TeacherExtension:
+    TeacherInheritance:
       type: object
       required: [id, ref, teacherStatus]
       properties:
         id:
           type: string
           format: uuid
-          description: Teacher extension id
+          description: Teacher inheritance id
         ref:
           type: string
           maxLength: 10
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
         teacherStatus:
           $ref: '#/components/schemas/TeacherStatus'
       example:
         id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
         ref: T001
+        joinedAt: 2023-09-01T08:00:00Z
         teacherStatus: ACTIVE
     UserWithTeacher:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
-          required: [extension]
+          required: [teacherInheritance]
           properties:
-            extension:
-              $ref: '#/components/schemas/TeacherExtension'
-      description: User account with its embedded teacher extension.
+            teacherInheritance:
+              $ref: '#/components/schemas/TeacherInheritance'
+      description: User account with its embedded teacher inheritance record.
       example:
         id: 2f4e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
         username: p.martin
@@ -1888,14 +1897,15 @@ components:
         role: TEACHER
         createdAt: 2023-09-01T08:00:00Z
         updatedAt: null
-        extension:
+        teacherInheritance:
           id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
           ref: T001
+          joinedAt: 2023-09-01T08:00:00Z
           teacherStatus: ACTIVE
     CreateTeacherInput:
       type: object
       required: [username, password, firstName, lastName, email, ref]
-      description: Creates the user account (role TEACHER) and its teacher extension.
+      description: Creates the user account (role TEACHER) and its teacher inheritance record.
       properties:
         username:
           type: string
@@ -1918,6 +1928,12 @@ components:
         ref:
           type: string
           maxLength: 10
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
+        teacherStatus:
+          $ref: '#/components/schemas/TeacherStatus'
       example:
         username: p.martin
         password: s3cur3P@ss
@@ -1925,6 +1941,8 @@ components:
         lastName: Martin
         email: paul.martin@hacheuil.edu
         ref: T001
+        joinedAt: 2023-09-01T08:00:00Z
+        teacherStatus: ACTIVE
     UpdateTeacherInput:
       type: object
       description: Partial update — only present fields are applied
@@ -1932,18 +1950,22 @@ components:
         ref:
           type: string
           maxLength: 10
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
         teacherStatus:
           $ref: '#/components/schemas/TeacherStatus'
       example:
         teacherStatus: INACTIVE
-    StudentExtension:
+    StudentInheritance:
       type: object
-      required: [id, ref, learningPath, studentStatus]
+      required: [id, ref, level, learningPath, studentStatus]
       properties:
         id:
           type: string
           format: uuid
-          description: Student extension id
+          description: Student inheritance id
         ref:
           type: string
           maxLength: 10
@@ -1951,6 +1973,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        level:
+          $ref: '#/components/schemas/Level'
         learningPath:
           $ref: '#/components/schemas/LearningPath'
         studentStatus:
@@ -1958,7 +1982,7 @@ components:
         graduationYear:
           type: integer
           nullable: true
-        promotionName:
+        className:
           type: string
           maxLength: 30
           nullable: true
@@ -1966,19 +1990,20 @@ components:
         id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         ref: '2023-001'
         joinedAt: 2023-09-04T09:00:00Z
+        level: L2
         learningPath: EL
         studentStatus: ACTIVE
         graduationYear: null
-        promotionName: null
+        className: null
     UserWithStudent:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
-          required: [extension]
+          required: [studentInheritance]
           properties:
-            extension:
-              $ref: '#/components/schemas/StudentExtension'
-      description: User account with its embedded student extension.
+            studentInheritance:
+              $ref: '#/components/schemas/StudentInheritance'
+      description: User account with its embedded student inheritance record.
       example:
         id: 3f3e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
         username: mdupont
@@ -1988,18 +2013,19 @@ components:
         role: STUDENT
         createdAt: 2023-09-04T09:00:00Z
         updatedAt: null
-        extension:
+        studentInheritance:
           id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
           ref: '2023-001'
           joinedAt: 2023-09-04T09:00:00Z
+          level: L2
           learningPath: EL
           studentStatus: ACTIVE
           graduationYear: null
-          promotionName: null
+          className: null
     CreateStudentInput:
       type: object
-      required: [username, password, firstName, lastName, email, ref, learningPath]
-      description: Creates the user account (role STUDENT) and its student extension.
+      required: [username, password, firstName, lastName, email, ref, level, learningPath]
+      description: Creates the user account (role STUDENT) and its student inheritance record.
       properties:
         username:
           type: string
@@ -2026,12 +2052,14 @@ components:
           type: string
           format: date-time
           nullable: true
+        level:
+          $ref: '#/components/schemas/Level'
         learningPath:
           $ref: '#/components/schemas/LearningPath'
-        promotionName:
+        className:
           type: string
           maxLength: 30
-          description: Set when the student graduates; empty while active.
+          description: Student's class name within its learning path (e.g. `CQ1`); null while unassigned.
           nullable: true
       example:
         username: mdupont
@@ -2041,8 +2069,9 @@ components:
         email: marie.dupont@hacheuil.edu
         ref: '2023-001'
         joinedAt: 2023-09-04T09:00:00Z
+        level: L2
         learningPath: EL
-        promotionName: null
+        className: null
     UpdateStudentInput:
       type: object
       description: Partial update — only present fields are applied
@@ -2054,6 +2083,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        level:
+          $ref: '#/components/schemas/Level'
         learningPath:
           $ref: '#/components/schemas/LearningPath'
         studentStatus:
@@ -2061,14 +2092,13 @@ components:
         graduationYear:
           type: integer
           nullable: true
-        promotionName:
+        className:
           type: string
           maxLength: 30
           nullable: true
       example:
         studentStatus: GRADUATED
         graduationYear: 2026
-        promotionName: EL 2026
     Class:
       type: object
       required: [id, ref, type, createdAt]
@@ -2161,9 +2191,10 @@ components:
           role: TEACHER
           createdAt: 2023-09-01T08:00:00Z
           updatedAt: null
-          extension:
+          teacherInheritance:
             id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
             ref: T001
+            joinedAt: 2023-09-01T08:00:00Z
             teacherStatus: ACTIVE
         course:
           id: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
@@ -2220,14 +2251,15 @@ components:
           role: STUDENT
           createdAt: 2023-09-04T09:00:00Z
           updatedAt: null
-          extension:
+          studentInheritance:
             id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
             ref: '2023-001'
             joinedAt: 2023-09-04T09:00:00Z
+            level: L2
             learningPath: EL
             studentStatus: ACTIVE
             graduationYear: null
-            promotionName: null
+            className: null
         class:
           id: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
           ref: CQ1

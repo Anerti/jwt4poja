@@ -2,7 +2,6 @@ package com.techindna.anerti.endpoint.rest.controller;
 
 import com.techindna.anerti.dto.LoginInput;
 import com.techindna.anerti.dto.MessageBody;
-import com.techindna.anerti.dto.RegisterInput;
 import com.techindna.anerti.dto.VerifyRegistrationResponse;
 import com.techindna.anerti.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,13 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AuthService authService;
-
-  @PostMapping("/register")
-  public ResponseEntity<MessageBody> register(
-      @RequestBody RegisterInput request, HttpServletRequest servletRequest) {
-    return ResponseEntity.status(HttpStatus.ACCEPTED)
-        .body(authService.register(request, servletRequest));
-  }
 
   @PostMapping("/login")
   public ResponseEntity<MessageBody> login(

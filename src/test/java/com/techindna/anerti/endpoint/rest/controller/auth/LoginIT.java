@@ -10,8 +10,8 @@ import com.techindna.anerti.dto.LoginInput;
 import com.techindna.anerti.dto.MessageBody;
 import com.techindna.anerti.endpoint.event.EventProducer;
 import com.techindna.anerti.endpoint.event.model.SendEmailRequested;
-import com.techindna.anerti.entity.enums.UserRole;
 import com.techindna.anerti.repository.AuthRepository;
+import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JUser;
 import java.util.List;
 import java.util.Set;
@@ -214,7 +214,7 @@ class LoginIT extends FacadeIT {
             .lastName("Doe")
             .email(email)
             .verified(verified)
-            .role(UserRole.CUSTOMER)
+            .role(UserRole.ADMIN)
             .build());
   }
 

@@ -1,6 +1,6 @@
 package com.techindna.anerti.repository.model;
 
-import com.techindna.anerti.entity.enums.UserRole;
+import com.techindna.anerti.repository.enums.UserRole;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
@@ -48,8 +48,15 @@ public class JUser {
 
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   @Column(name = "role", nullable = false)
-  @Builder.Default
-  private UserRole role = UserRole.CUSTOMER;
+  private UserRole role;
+
+  @OneToOne
+  @JoinColumn(name = "teacher_inheritance_id")
+  private JTeacherInheritance teacherInheritance;
+
+  @OneToOne
+  @JoinColumn(name = "student_inheritance_id")
+  private JStudentInheritance studentInheritance;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false)
