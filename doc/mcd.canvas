@@ -1,6 +1,38 @@
 {
 	"nodes":[
-		{"id":"d5a02ab6c0fb9995","x":-171,"y":-294,"width":551,"height":474,"type":"text","text":"# user\n\n- `id uuid pk default gen_random_uuid()`\n- `username varchar(50) unique not null`\n- `email varchar(100) unique not null`\n- `password varchar(255) not null`\n- `first_name varchar(100) not null`\n- `last_name varchar(100) not null`\n- `role enum('ADMIN', 'CUSTOMER') default 'CUSTOMER'`\n- `verified boolean default false`\n- `created_at timestampz default now()`\n- `upated_at timestampz`"}
+		{"id":"bc5e16bf942d1e42","type":"text","text":"## grade_exam","x":-2887,"y":-580,"width":195,"height":60,"color":"#ffffff"},
+		{"id":"f1b090ac33a5a268","type":"text","text":"# exam\n\n- `id uuid pk default gen_random_uuid()`\n- `course_id uuid fk references course(id) not null`\n- `coefficient numeric(10,2) not null`\n- `academic_year int not null`\n- `date timestampz not null`\n- `created_at timestampz default now()`\n- `updated_at timestampz`","x":-3140,"y":-1139,"width":700,"height":300,"color":"#dea311"},
+		{"id":"ee8fc96c2bc6ca07","type":"text","text":"# teacher_extension\n\n- `id uuid pk default gen_random_uuid()`\n- `user_id uuid fk references user(id) unique not null`\n- `ref varchar(10) unique not null`\n- `teacher_status enum('ACTIVE', 'INACTIVE', 'OTHER') default 'ACTIVE'`","x":1000,"y":-1153,"width":665,"height":329,"color":"#dea311"},
+		{"id":"7eb81c9ab0d752a6","type":"text","text":"## user_teacher_extension","x":1173,"y":-600,"width":320,"height":60,"color":"#ffffff"},
+		{"id":"d5a02ab6c0fb9995","type":"text","text":"# user\n\n- `id uuid pk default gen_random_uuid()`\n- `username varchar(50) unique not null`\n- `email varchar(100) unique not null`\n- `password varchar(255) not null`\n- `first_name varchar(100) not null`\n- `last_name varchar(100) not null`\n- `role enum('ADMIN', 'TEACHER', 'STUDENT') not null`\n- `verified boolean default false`\n- `created_at timestampz default now()`\n- `updated_at timestampz`","x":1001,"y":-237,"width":664,"height":377,"color":"#dea311"},
+		{"id":"d6f75ca4438cf96f","type":"text","text":"# course\n\n- `id uuid pk default gen_random_uuid()`\n- `ref varchar(10) unique not null`\n- `title text`\n- `type enum('EL', 'TN', 'COMMON') default 'COMMON'`\n- `credits int not null`\n- `created_at timestampz default now()`\n- `updated_at timestampz`","x":-1337,"y":-1153,"width":710,"height":329,"color":"#dea311"},
+		{"id":"e2129d2168d298c6","x":-200,"y":-1153,"width":700,"height":329,"color":"#ffffff","type":"text","text":"## teacher_course\n\n- `id uuid default gen_random_uuid()`\n- `teacher_extension_id uuid fk references teacher_extension(id) not null`\n- `course_id uuid fk references course(id) not null`\n- `assigned_at timestampz not null`\n- `(teacher_extension_id, course_id) unique`"},
+		{"id":"4f530b8aba90ed65","type":"text","text":"## course_exam","x":-2000,"y":-1019,"width":215,"height":60,"color":"#ffffff"},
+		{"id":"5a1a1b5022bfc26b","type":"text","text":"# grade\n\n- `id uuid pk default gen_random_uuid()`\n- `student_extension_id uuid fk references student_extension(id) not null`\n- `exam_id uuid fk references exam(id) not null`\n- `created_at timestampz default now()`","x":-3139,"y":-237,"width":700,"height":361,"color":"#dea311"},
+		{"id":"4106520315d26451","type":"text","text":"## grade_student","x":-2000,"y":-86,"width":220,"height":60,"color":"#ffffff"},
+		{"id":"0f69f1c440cead33","type":"text","text":"# class\n\n- `id uuid pk default gen_random_uuid()`\n- `ref varchar(10) unique not null`\n- `created_at timestampz default now()`\n- `type enum('EL', 'TN', 'COMMON') default 'COMMON'`","x":-1337,"y":960,"width":710,"height":240,"color":"#dea311"},
+		{"id":"78acdb432612325e","type":"text","text":"## student_class\n\n- `id uuid pk default gen_random_uuid()`\n-  `student_extension_id uuid fk references student_extension(id) not null`\n- `class_id uuid fk references class(id) not null`\n- `joigned_at timestampz default now()`\n- `left_at timestampz`\n- `(student_extension_id, class_id) unique`","x":-1337,"y":420,"width":710,"height":280,"color":"#ffffff"},
+		{"id":"87519ca5f1bebc10","type":"text","text":"# student_extension\n\n- `id uuid pk default gen_random_uuid()`\n- `user_id uuid fk references user(id) unique not null`\n- `ref varchar(10) unique not null`\n- `joigned_at timestampz`\n- `learning_path enum('EL', 'TN', 'COMMON') default 'COMMON'`\n- `student_status enum('GRADUATED', 'ACTIVE', 'INACTIVE') default 'ACTIVE'`\n- `graduation_year int`\n- `promotion_name varchar(30) unique`","x":-1337,"y":-234,"width":710,"height":374,"color":"#dea311"},
+		{"id":"e5e2ff828bf734e7","type":"text","text":"## user_student_extension","x":-10,"y":-78,"width":320,"height":60,"color":"#ffffff"},
+		{"id":"2e31279e8e7f01fc","type":"text","text":"# history\n\n- `id uuid pk default gen_random_uuid()`\n- `grade_id uuid fk references grade(id) not null`\n- `grade numeric(10, 2) not null`\n- `description text not null`\n- `created_at timestampz default now()`","x":-3140,"y":960,"width":700,"height":240,"color":"#dea311"},
+		{"id":"74212883100470b5","x":-2915,"y":530,"width":250,"height":60,"color":"#ffffff","type":"text","text":"## grade_history"}
 	],
-	"edges":[]
+	"edges":[
+		{"id":"20c467610a111546","fromNode":"d5a02ab6c0fb9995","fromSide":"left","toNode":"e5e2ff828bf734e7","toSide":"right","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"f43950243721a2b2","fromNode":"e5e2ff828bf734e7","fromSide":"left","toNode":"87519ca5f1bebc10","toSide":"right","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"ec053148471c9488","fromNode":"87519ca5f1bebc10","fromSide":"bottom","toNode":"78acdb432612325e","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"315ba249facc4f4c","fromNode":"78acdb432612325e","fromSide":"bottom","toNode":"0f69f1c440cead33","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"a7c2d375ec3cc5a1","fromNode":"5a1a1b5022bfc26b","fromSide":"right","toNode":"4106520315d26451","toSide":"left","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"8df68f364eabbfa8","fromNode":"4106520315d26451","fromSide":"right","toNode":"87519ca5f1bebc10","toSide":"left","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"7d7b2b13a7037915","fromNode":"d6f75ca4438cf96f","fromSide":"left","toNode":"4f530b8aba90ed65","toSide":"right","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"c2f1a1b08d958dc5","fromNode":"4f530b8aba90ed65","fromSide":"left","toNode":"f1b090ac33a5a268","toSide":"right","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"c31062a101e70d50","fromNode":"5a1a1b5022bfc26b","fromSide":"top","toNode":"bc5e16bf942d1e42","toSide":"bottom","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"dfd9b1045a98263e","fromNode":"bc5e16bf942d1e42","fromSide":"top","toNode":"f1b090ac33a5a268","toSide":"bottom","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"69f2cf2fb3ef9f3b","fromNode":"7eb81c9ab0d752a6","fromSide":"top","toNode":"ee8fc96c2bc6ca07","toSide":"bottom","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"9f6364bc22ccd41f","fromNode":"d5a02ab6c0fb9995","fromSide":"top","toNode":"7eb81c9ab0d752a6","toSide":"bottom","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"b02c6c75fe2c91ef","fromNode":"d6f75ca4438cf96f","fromSide":"right","toNode":"e2129d2168d298c6","toSide":"left","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"e6251c4b5ee9e20c","fromNode":"e2129d2168d298c6","fromSide":"right","toNode":"ee8fc96c2bc6ca07","toSide":"left","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"a1c7896244cd02fb","fromNode":"5a1a1b5022bfc26b","fromSide":"bottom","toNode":"74212883100470b5","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,N"},
+		{"id":"daa503c9880e9de3","fromNode":"74212883100470b5","fromSide":"bottom","toNode":"2e31279e8e7f01fc","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,1"}
+	]
 }
