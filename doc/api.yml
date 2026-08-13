@@ -505,7 +505,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithTeacher'
+                $ref: '#/components/schemas/UserExtendTeacher'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -588,7 +588,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithTeacher'
+                $ref: '#/components/schemas/UserExtendTeacher'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -623,7 +623,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithTeacher'
+                $ref: '#/components/schemas/UserExtendTeacher'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1879,7 +1879,7 @@ components:
         ref: T001
         joinedAt: 2023-09-01T08:00:00Z
         teacherStatus: ACTIVE
-    UserWithTeacher:
+    UserExtendTeacher:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
@@ -2174,7 +2174,7 @@ components:
           type: string
           format: uuid
         teacher:
-          $ref: '#/components/schemas/UserWithTeacher'
+          $ref: '#/components/schemas/UserExtendTeacher'
         course:
           $ref: '#/components/schemas/Course'
         assignedAt:
@@ -2480,7 +2480,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/UserWithTeacher'
+            $ref: '#/components/schemas/UserExtendTeacher'
         meta:
           $ref: '#/components/schemas/Meta'
     StudentListResponse:
