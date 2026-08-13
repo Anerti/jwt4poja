@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.techindna.anerti.conf.FacadeIT;
 import com.techindna.anerti.dto.VerifyRegistrationResponse;
-import com.techindna.anerti.entity.enums.UserRole;
 import com.techindna.anerti.repository.AuthRepository;
+import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.jwt.JwtTokenProvider;
 import com.techindna.anerti.service.VerificationCodeStore;
@@ -52,7 +52,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void valid_token_verifies_user_and_returns_jwt() {
-    JUser user = saveUser("jdoe", UserRole.CUSTOMER, false);
+    JUser user = saveUser("jdoe", UserRole.ADMIN, false);
     String token = UUID.randomUUID().toString();
     verificationCodeStore.saveToken(user.getEmail(), token);
 
@@ -66,19 +66,19 @@ class AuthVerificationIT extends FacadeIT {
     assertThat(response.getBody().token()).isNotBlank();
     assertThat(response.getBody().user().id()).isEqualTo(user.getId());
     assertThat(response.getBody().user().username()).isEqualTo("jdoe");
-    assertThat(response.getBody().user().role()).isEqualTo(UserRole.CUSTOMER);
+    assertThat(response.getBody().user().role()).isEqualTo(UserRole.ADMIN);
 
     assertThat(authRepository.findById(user.getId()).orElseThrow().getVerified()).isTrue();
     assertThat(verificationCodeStore.getEmailByToken(token)).isEmpty();
 
     Claims claims = jwtTokenProvider.validateToken(response.getBody().token());
     assertThat(claims.getSubject()).isEqualTo(user.getId().toString());
-    assertThat(claims.get("role")).isEqualTo(UserRole.CUSTOMER.name());
+    assertThat(claims.get("role")).isEqualTo(UserRole.ADMIN.name());
   }
 
   @Test
   void already_verified_user_still_gets_200() {
-    JUser user = saveUser("jdoe", UserRole.CUSTOMER, true);
+    JUser user = saveUser("jdoe", UserRole.ADMIN, true);
     String token = UUID.randomUUID().toString();
     verificationCodeStore.saveToken(user.getEmail(), token);
 
@@ -91,7 +91,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void unknown_token_is_unauthorized() {
-    saveUser("jdoe", UserRole.CUSTOMER, false);
+    saveUser("jdoe", UserRole.ADMIN, false);
     UUID unknownToken = UUID.randomUUID();
 
     assertThat(verificationCodeStore.getEmailByToken(unknownToken.toString())).isEmpty();
@@ -117,7 +117,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void used_token_is_unauthorized() {
-    JUser user = saveUser("jdoe", UserRole.CUSTOMER, false);
+    JUser user = saveUser("jdoe", UserRole.ADMIN, false);
     String token = UUID.randomUUID().toString();
     verificationCodeStore.saveToken(user.getEmail(), token);
 
@@ -131,7 +131,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void expired_token_is_unauthorized() throws InterruptedException {
-    JUser user = saveUser("jdoe", UserRole.CUSTOMER, false);
+    JUser user = saveUser("jdoe", UserRole.ADMIN, false);
     String token = UUID.randomUUID().toString();
     redis.opsForValue().set("verification:" + token, user.getEmail(), Duration.ofSeconds(1));
 
