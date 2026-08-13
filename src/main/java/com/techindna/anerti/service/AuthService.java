@@ -2,11 +2,9 @@ package com.techindna.anerti.service;
 
 import com.techindna.anerti.dto.LoginInput;
 import com.techindna.anerti.dto.MessageBody;
-import com.techindna.anerti.dto.RegisterInput;
 import com.techindna.anerti.dto.VerifyRegistrationResponse;
 import com.techindna.anerti.endpoint.event.EventProducer;
 import com.techindna.anerti.endpoint.event.model.SendEmailRequested;
-import com.techindna.anerti.exception.http.ConflictException;
 import com.techindna.anerti.exception.http.ForbiddenException;
 import com.techindna.anerti.exception.http.UnauthorizedException;
 import com.techindna.anerti.mapper.UserMapper;
@@ -24,7 +22,6 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,38 +47,6 @@ public class AuthService {
 
   @Value("${app.base-url}")
   private String baseUrl;
-
-  @Transactional
-  public MessageBody register(RegisterInput request, HttpServletRequest servletRequest) {
-    userValidator.validateRegistration(request);
-    String encodedPassword = passwordEncoder.encode(request.password());
-    String email = request.email().strip().toLowerCase();
-
-    try {
-      authRepository.save(userMapper.toEntity(request, encodedPassword));
-      authRepository.flush();
-    } catch (DataIntegrityViolationException e) {
-      String constraint = e.getMostSpecificCause().getMessage();
-      if (constraint != null && constraint.contains("email")) {
-        throw new ConflictException("You cannot use this email address");
-      }
-      if (constraint != null && constraint.contains("username")) {
-        throw new ConflictException("You cannot use this username");
-      }
-      throw e;
-    }
-
-    sendVerificationLink(
-        email,
-        request.firstName().strip(),
-        request.lastName().strip(),
-        request.username().strip(),
-        "Email Verification",
-        "mail/verification",
-        servletRequest);
-
-    return new MessageBody("An email has been sent to verify your account");
-  }
 
   @Transactional
   public MessageBody login(LoginInput request, HttpServletRequest servletRequest) {

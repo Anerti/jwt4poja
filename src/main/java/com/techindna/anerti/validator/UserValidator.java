@@ -1,7 +1,6 @@
 package com.techindna.anerti.validator;
 
 import com.techindna.anerti.dto.LoginInput;
-import com.techindna.anerti.dto.RegisterInput;
 import com.techindna.anerti.exception.http.UnprocessableContentException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -24,21 +23,5 @@ public class UserValidator {
       throw new UnprocessableContentException("Username or email is required and cannot be blank");
     }
     dataValidator.checkNullData("password", request.password());
-  }
-
-  public void validateRegistration(RegisterInput request) {
-    dataValidator.validateEmail("email", request.email());
-
-    dataValidator.checkPasswordSecurityLevel(request.password());
-
-    dataValidator.checkNullData("confirmPassword", request.confirmPassword());
-    if (!request.password().equals(request.confirmPassword())) {
-      throw new UnprocessableContentException("Passwords do not match");
-    }
-
-    dataValidator.validateName("firstName", request.firstName());
-    dataValidator.validateName("lastName", request.lastName());
-
-    dataValidator.validateUsername(request.username());
   }
 }
