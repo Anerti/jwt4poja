@@ -12,6 +12,7 @@ public class DataValidator {
   private static final Pattern NAME_FORMAT = Pattern.compile("^[A-Z][a-z-'éèê ]{2,}$");
   private static final Pattern USERNAME_FORMAT = Pattern.compile("^[a-zA-Z_0-9-]{2,}$");
   private static final Pattern SEARCH_FORMAT = Pattern.compile("^[a-zA-Z0-9_@.'éèê -]+$");
+  private static final Pattern REF_FORMAT = Pattern.compile("^[A-Za-z0-9-]+$");
 
   public void checkNullData(String field, String value) {
     if (value == null || value.isBlank()) {
@@ -54,6 +55,17 @@ public class DataValidator {
 
     if (!EMAIL_FORMAT.matcher(value.toLowerCase()).matches()) {
       throw new UnprocessableContentException(String.format("Email %s is not valid", value));
+    }
+  }
+
+  public void validateRef(String value) {
+    checkNullData("ref", value);
+    checkStringLength("ref", value, 10);
+
+    if (!REF_FORMAT.matcher(value).matches()) {
+      throw new UnprocessableContentException(
+          String.format(
+              "Ref %s is invalid, it may only contain letters, numbers, and the symbol -", value));
     }
   }
 
