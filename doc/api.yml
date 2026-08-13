@@ -3,47 +3,36 @@ info:
   title: jwt4poja API
   version: 1.0.0
   description: |
-    JWT authentication template API — POJA-generated Spring Boot app
-    (package `com.techindna.anerti`, schema `jwt4poja_app`).
+    Grade management API for a 3-year L2 program (POJA-generated Spring Boot
+    app, package `com.techindna.anerti`, schema `jwt4poja_app`).
 
-    Auth endpoints (`/auth/**`) are public. Users endpoints (`/users/**`)
-    require a JWT; `GET /users` and `GET /users/{userId}` are implemented,
-    the rest are planned.
-
-    Roles: `CUSTOMER` (default) and `ADMIN`.
+    Roles: `ADMIN`, `TEACHER`, `STUDENT`. There is no public registration:
+    accounts are created by an `ADMIN` (`POST /students`, `POST /teachers`).
+    Auth endpoints (`/auth/**`) are public; everything else requires a JWT.
 servers:
   - url: http://localhost:8080
 tags:
   - name: auth
-    description: Registration, login and email verification (public)
-  - name: users
-    description: User management (JWT required)
+    description: Login and email verification (public)
+  - name: courses
+    description: Courses and course catalog (ADMIN manages, TEACHER reads)
+  - name: exams
+    description: Exams per course and academic year (ADMIN manages, TEACHER reads)
+  - name: teachers
+    description: Teacher accounts and teacher extensions (ADMIN)
+  - name: students
+    description: Student accounts and student extensions (ADMIN; owner read)
+  - name: classes
+    description: Student groups/classes (ADMIN manages, TEACHER reads)
+  - name: assignments
+    description: Course-to-teacher assignments per year (ADMIN)
+  - name: enrollments
+    description: Student-to-class enrollments (ADMIN)
+  - name: grades
+    description: Grades and grade history (ADMIN, TEACHER for own courses, STUDENT for own grades)
+  - name: reports
+    description: Annual grade reports by email and graduation lists
 paths:
-  /auth/register:
-    post:
-      tags: [auth]
-      summary: Register a new user
-      description: Creates a CUSTOMER account and sends a verification email.
-      operationId: register
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterInput'
-      responses:
-        '202':
-          description: Accepted — verification email sent
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageBody'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
   /auth/login:
     post:
       tags: [auth]
@@ -69,6 +58,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /auth/resend-link:
     post:
       tags: [auth]
@@ -93,14 +86,17 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /auth/verification/{token}:
     get:
       tags: [auth]
       summary: Verify the email token and obtain a JWT
       description: |
         Single-use token (15-minute TTL). Marks the user verified and returns a
-        JWT plus the user payload. Serves both registration and login
-        verification.
+        JWT plus the user payload. Serves login verification.
       operationId: verify
       parameters:
         - name: token
@@ -120,21 +116,592 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /users:
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /courses:
+    post:
+      tags: [courses]
+      summary: Create a course (ADMIN)
+      description: Creates a course. `ref` must be unique across courses.
+      operationId: createCourse
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCourseInput'
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     get:
-      tags: [users]
-      summary: List users (ADMIN only)
+      tags: [courses]
+      summary: List courses (ADMIN, TEACHER)
       description: |
-        Lists CUSTOMER users. `search` matches username, first name, last name
-        or email (case-insensitive substring). One-based `page` (default 1;
-        values below 1 fall back to the default). `size` (default 10, max 100;
-        values below 1 fall back to the default, values above 100 are capped).
-        `sort` direction applied to `createdAt` (default `ASC`).
-      operationId: listUsers
+        Lists courses ordered by `createdAt`. `search` matches `ref` or `title`
+        (case-insensitive substring, partial match). `type` filters by exact
+        learning path.
+      operationId: listCourses
       security:
         - bearerAuth: []
       parameters:
         - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/CourseType'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of courses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /courses/{courseId}:
+    get:
+      tags: [courses]
+      summary: Get a course by id (ADMIN, TEACHER)
+      operationId: getCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [courses]
+      summary: Partially update a course (ADMIN)
+      description: |
+        Partially updates the course. `ref`, `title`, `type` and `credits` can
+        all be modified; only present fields are applied. A `ref` change must
+        stay unique.
+      operationId: updateCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCourseInput'
+      responses:
+        '200':
+          description: The updated course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exams:
+    post:
+      tags: [exams]
+      summary: Create an exam (ADMIN, TEACHER)
+      description: |
+        Creates an exam for a course and an academic year. The `coefficient` is
+        indicative (e.g. `0.5`, `0.2`, `1/3`); the coefficients of all exams of
+        a course must sum to 1. ADMIN can create an exam for any course; a
+        TEACHER can only create exams for courses assigned to them.
+      operationId: createExam
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateExamInput'
+      responses:
+        '201':
+          description: Exam created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [exams]
+      summary: List exams (ADMIN, TEACHER)
+      description: |
+        Lists exams ordered by `date`. `ref` (course ref, partial match),
+        `academicYear` (exact match), `startDate` and `endDate` (exam `date`
+        range) filters. ADMIN sees all exams; a TEACHER only sees exams of
+        courses assigned to them.
+      operationId: listExams
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ref
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 10
+          description: Course ref of the exam (partial match)
+        - name: academicYear
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Inclusive lower bound on exam `date`
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Inclusive upper bound on exam `date`
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of exams
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /exams/{examId}:
+    get:
+      tags: [exams]
+      summary: Get an exam by id (ADMIN, TEACHER)
+      operationId: getExam
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested exam
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exam'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [exams]
+      summary: Partially update an exam (ADMIN, TEACHER)
+      description: |
+        Only present fields are applied. ADMIN can update any exam; a TEACHER
+        can only update exams of courses assigned to them and cannot change the
+        `courseId` (an exam stays attached to the course it was created for).
+      operationId: updateExam
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateExamInput'
+      responses:
+        '200':
+          description: The updated exam
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exam'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [exams]
+      summary: Delete an exam (ADMIN, TEACHER)
+      description: |
+        ADMIN can delete any exam; a TEACHER can only delete exams of courses
+        assigned to them. Refused (409) when grades still reference it.
+      operationId: deleteExam
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted — no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /teachers:
+    post:
+      tags: [teachers]
+      summary: Create a teacher (ADMIN)
+      description: |
+        Creates the underlying user account (role `TEACHER`) and its teacher
+        extension in one operation. `username`, `email` and `ref` must be
+        unique.
+      operationId: createTeacher
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeacherInput'
+      responses:
+        '201':
+          description: Teacher created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithTeacher'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [teachers]
+      summary: List teachers (ADMIN)
+      description: |
+        Lists teachers. `search` matches `ref`, first name or last name
+        (case-insensitive substring, partial match). `teacherStatus` filters by
+        exact status.
+      operationId: listTeachers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: teacherStatus
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TeacherStatus'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of teachers
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /teachers/{teacherId}:
+    get:
+      tags: [teachers]
+      summary: Get a teacher by id (ADMIN)
+      operationId: getTeacher
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: teacherId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested teacher
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithTeacher'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [teachers]
+      summary: Partially update a teacher (ADMIN)
+      description: Only present fields are applied. A `ref` change must stay unique.
+      operationId: updateTeacher
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: teacherId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeacherInput'
+      responses:
+        '200':
+          description: The updated teacher
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithTeacher'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /students:
+    post:
+      tags: [students]
+      summary: Create a student (ADMIN)
+      description: |
+        Creates the underlying user account (role `STUDENT`) and its student
+        extension in one operation. Students are not created through
+        self-registration — an `ADMIN` provisions them. `username`, `email` and
+        `ref` must be unique.
+      operationId: createStudent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStudentInput'
+      responses:
+        '201':
+          description: Student created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserWithStudent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [students]
+      summary: List students (ADMIN, TEACHER)
+      description: |
+        Lists students. `search` matches `ref`, first name or last name
+        (case-insensitive substring, partial match). `learningPath`,
+        `studentStatus` and `promotionName` are exact-match filters.
+      operationId: listStudents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: learningPath
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/LearningPath'
+        - name: studentStatus
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/StudentStatus'
+        - name: promotionName
           in: query
           required: false
           schema:
@@ -153,34 +720,31 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-        - name: sort
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [ASC, DESC]
-            default: ASC
       responses:
         '200':
-          description: Page of users
+          description: Page of students
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserListResponse'
+                $ref: '#/components/schemas/StudentListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /users/{userId}:
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /students/{studentId}:
     get:
-      tags: [users]
-      summary: Get a user by id
-      description: Owner or ADMIN (ADMIN cannot access another ADMIN).
-      operationId: getUser
+      tags: [students]
+      summary: Get a student by id
+      description: ADMIN, a TEACHER, or the STUDENT who owns the record.
+      operationId: getStudent
       security:
         - bearerAuth: []
       parameters:
-        - name: userId
+        - name: studentId
           in: path
           required: true
           schema:
@@ -188,26 +752,31 @@ paths:
             format: uuid
       responses:
         '200':
-          description: The requested user
+          description: The requested student
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserWithStudent'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
     patch:
-      tags: [users]
-      summary: Partially update a user profile
-      description: Not implemented yet. Owner or ADMIN; only present fields are applied.
-      operationId: updateUser
+      tags: [students]
+      summary: Partially update a student (ADMIN)
+      description: |
+        Only present fields are applied. Marking a student `GRADUATED` with a
+        `graduationYear` and `promotionName` adds them to that promotion's
+        graduation list. A `ref` or `promotionName` change must stay unique.
+      operationId: updateStudent
       security:
         - bearerAuth: []
       parameters:
-        - name: userId
+        - name: studentId
           in: path
           required: true
           schema:
@@ -218,14 +787,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateUserInput'
+              $ref: '#/components/schemas/UpdateStudentInput'
       responses:
         '200':
-          description: The updated user
+          description: The updated student
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/UserWithStudent'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -234,15 +803,173 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-    delete:
-      tags: [users]
-      summary: Delete a user account
-      description: Not implemented yet. Owner or ADMIN (same rule as GET and PATCH).
-      operationId: deleteUser
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /classes:
+    post:
+      tags: [classes]
+      summary: Create a class/group (ADMIN)
+      description: Creates a student group (e.g. `CQ1`, `TSMA1`). `ref` must be unique.
+      operationId: createClass
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClassInput'
+      responses:
+        '201':
+          description: Class created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Class'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [classes]
+      summary: List classes (ADMIN, TEACHER)
+      description: |
+        Lists classes. `search` matches `ref` (case-insensitive substring,
+        partial match). `type` filters by exact learning path.
+      operationId: listClasses
       security:
         - bearerAuth: []
       parameters:
-        - name: userId
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/CourseType'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of classes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /classes/{classId}:
+    get:
+      tags: [classes]
+      summary: Get a class by id (ADMIN, TEACHER)
+      operationId: getClass
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The requested class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Class'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      tags: [classes]
+      summary: Partially update a class (ADMIN)
+      description: Only present fields are applied. A `ref` change must stay unique.
+      operationId: updateClass
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClassInput'
+      responses:
+        '200':
+          description: The updated class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Class'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [classes]
+      summary: Delete a class (ADMIN)
+      description: Refused (409) when enrollments still reference it.
+      operationId: deleteClass
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: classId
           in: path
           required: true
           schema:
@@ -257,6 +984,541 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /teacher-courses:
+    post:
+      tags: [assignments]
+      summary: Assign a course to a teacher (ADMIN)
+      description: |
+        Assigns a course to a teacher for a period, starting at `assignedAt`.
+        A teacher can teach the same course in several academic years — re-assign
+        by closing the previous period and creating a new assignment. A given
+        (teacher, course) pair is unique.
+      operationId: assignTeacherToCourse
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeacherCourseInput'
+      responses:
+        '201':
+          description: Assignment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCourse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [assignments]
+      summary: List teacher-course assignments
+      description: |
+        Lists assignments ordered by `assignedAt`. Each item embeds the full
+        teacher user (with its extension) and the full course. ADMIN sees all
+        assignments; a TEACHER only sees the courses assigned to themselves.
+        `teacherId` and `courseId` are exact-match filters.
+      operationId: listTeacherCourses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: teacherId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: courseId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of assignments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherCourseListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /teacher-courses/{teacherCourseId}:
+    delete:
+      tags: [assignments]
+      summary: Remove a teacher-course assignment (ADMIN)
+      operationId: deleteTeacherCourse
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: teacherCourseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Deleted — no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /student-classes:
+    post:
+      tags: [enrollments]
+      summary: Enroll a student in a class (ADMIN)
+      description: |
+        Enrolls a student in a class starting at `joinedAt`. Grades follow the
+        student, not the group — a student can change class mid-semester by
+        closing the previous enrollment (`leftAt`) and opening a new one. A
+        given (student, class) pair is unique.
+      operationId: enrollStudent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStudentClassInput'
+      responses:
+        '201':
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentClass'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [enrollments]
+      summary: List student-class enrollments
+      description: |
+        Lists enrollments. Each item embeds the full student user (with its
+        extension) and the full class. `studentId` and `classId` are exact-match
+        filters. ADMIN sees all enrollments; a TEACHER sees only the students
+        enrolled in classes (groups) they need for their courses.
+      operationId: listStudentClasses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: classId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of enrollments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentClassListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /student-classes/{studentClassId}:
+    patch:
+      tags: [enrollments]
+      summary: Close a student's enrollment in a class (ADMIN)
+      description: |
+        Sets `leftAt` to mark the end of the enrollment (e.g. group change
+        mid-semester). Only `leftAt` can be updated.
+      operationId: updateStudentClass
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentClassId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStudentClassInput'
+      responses:
+        '200':
+          description: The updated enrollment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentClass'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /grades:
+    post:
+      tags: [grades]
+      summary: Record a grade (ADMIN, TEACHER)
+      description: |
+        Records the grade of a student for an exam. ADMIN can grade any exam; a
+        TEACHER can only grade exams of courses assigned to them. The grade is
+        stored as the initial `history` entry (`grade` is the current value).
+        A student can only have one grade per exam.
+      operationId: createGrade
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGradeInput'
+      responses:
+        '201':
+          description: Grade recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Grade'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /grades/{studentId}:
+    get:
+      tags: [grades]
+      summary: List a student's grades
+      description: |
+        Lists the grades of the student identified by `studentId`. `examId` and
+        `academicYear` are exact-match filters. ADMIN and TEACHER can list any
+        student's grades (a TEACHER only sees grades of exams of courses
+        assigned to them); a STUDENT can only list their own grades — the path
+        `studentId` is forced to the authenticated student.
+      operationId: listGrades
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: examId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: academicYear
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of grades
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /grades/{gradeId}:
+    patch:
+      tags: [grades]
+      summary: Correct a grade (ADMIN, TEACHER)
+      description: |
+        Appends a new `history` entry with the corrected value and a mandatory
+        `description` (e.g. "transcription error"). The current grade becomes
+        this latest entry. A TEACHER can only correct grades of exams of courses
+        assigned to them.
+      operationId: updateGrade
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGradeInput'
+      responses:
+        '200':
+          description: The corrected grade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Grade'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /grades/{gradeId}/history:
+    get:
+      tags: [grades]
+      summary: Get a grade's correction history
+      description: |
+        Chronological history of the grade (initial entry then corrections).
+        ADMIN sees any history; a TEACHER only for exams of courses assigned to
+        them; a STUDENT only their own grades' history.
+      operationId: getGradeHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gradeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The grade's history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /grade-reports:
+    post:
+      tags: [reports]
+      summary: Generate and email an annual grade report (ADMIN)
+      description: |
+        Asynchronous. Computes the provisional annual transcript of a student
+        for an academic year (annual general average, validated credits) and
+        sends the PDF by email (S3 + SES), addressed to the student.
+      operationId: generateGradeReport
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeReportRequest'
+      responses:
+        '202':
+          description: Accepted — the annual transcript will be emailed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageBody'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /graduations/{promotion}:
+    get:
+      tags: [reports]
+      summary: List the graduates of a promotion, ranked
+      description: |
+        Graduates of the promotion over the 3 years, sorted by rank. A student
+        is a graduate of the promotion if they scored ≥ 10 in every course of
+        their learning path across all 3 academic years. Columns: rank, student
+        id, last name, first name, general average.
+      operationId: getGraduates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: promotion
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ranked graduates of the promotion
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GraduatesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /graduations/{promotion}/download:
+    get:
+      tags: [reports]
+      summary: Download the graduates list as XLSX
+      description: |
+        Same ranked graduates as `GET /graduations/{promotion}`, exported as an
+        XLSX workbook (columns: rank, student id, last name, first name, general
+        average) stored on S3 and streamed to the client.
+      operationId: downloadGraduates
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: promotion
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: XLSX workbook of the graduates list
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 components:
   securitySchemes:
     bearerAuth:
@@ -271,40 +1533,95 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 400
+            error: Bad Request
+            message: "Malformed request: invalid UUID in path"
+            timestamp: 2026-08-13T12:00:00Z
     Unauthorized:
       description: Missing/invalid JWT or bad credentials
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 401
+            error: Unauthorized
+            message: Missing or invalid token
+            timestamp: 2026-08-13T12:00:00Z
     Forbidden:
       description: Authenticated but not allowed
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 403
+            error: Forbidden
+            message: Access denied for this role
+            timestamp: 2026-08-13T12:00:00Z
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 404
+            error: Not Found
+            message: Resource not found
+            timestamp: 2026-08-13T12:00:00Z
     Conflict:
-      description: Uniqueness conflict (email or username already in use)
+      description: Uniqueness conflict (username, email or ref already in use)
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 409
+            error: Conflict
+            message: A resource with this unique value already exists
+            timestamp: 2026-08-13T12:00:00Z
     UnprocessableContent:
       description: Validation failed
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 422
+            error: Unprocessable Content
+            message: "Validation failed: coefficient must be greater than 0"
+            timestamp: 2026-08-13T12:00:00Z
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+          example:
+            status: 500
+            error: Internal Server Error
+            message: An unexpected error occurred
+            timestamp: 2026-08-13T12:00:00Z
   schemas:
     UserRole:
       type: string
-      enum: [CUSTOMER, ADMIN]
+      enum: [ADMIN, TEACHER, STUDENT]
+    LearningPath:
+      type: string
+      enum: [EL, TN, COMMON]
+      description: Student learning path. COMMON applies to both paths.
+    CourseType:
+      type: string
+      enum: [EL, TN, COMMON]
+      description: Learning path a course or class belongs to. COMMON = shared by all paths.
+    TeacherStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, OTHER]
+    StudentStatus:
+      type: string
+      enum: [GRADUATED, ACTIVE, INACTIVE]
     User:
       type: object
       required: [id, username, firstName, lastName, email, role, createdAt]
@@ -314,13 +1631,17 @@ components:
           format: uuid
         username:
           type: string
+          maxLength: 50
         firstName:
           type: string
+          maxLength: 100
         lastName:
           type: string
+          maxLength: 100
         email:
           type: string
           format: email
+          maxLength: 100
         role:
           $ref: '#/components/schemas/UserRole'
         createdAt:
@@ -330,28 +1651,15 @@ components:
           type: string
           format: date-time
           nullable: true
-    RegisterInput:
-      type: object
-      required: [username, password, confirmPassword, firstName, lastName, email]
-      properties:
-        username:
-          type: string
-        password:
-          type: string
-          format: password
-          minLength: 12
-          description: 12+ chars with upper, lower, digit and special char
-        confirmPassword:
-          type: string
-          format: password
-          description: Must match `password`
-        firstName:
-          type: string
-        lastName:
-          type: string
-        email:
-          type: string
-          format: email
+      example:
+        id: 3f3e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
+        username: mdupont
+        firstName: Marie
+        lastName: Dupont
+        email: marie.dupont@hacheuil.edu
+        role: STUDENT
+        createdAt: 2023-09-04T09:00:00Z
+        updatedAt: null
     LoginInput:
       type: object
       required: [password]
@@ -365,12 +1673,17 @@ components:
         password:
           type: string
           format: password
+      example:
+        username: mdupont
+        password: s3cur3P@ss
     MessageBody:
       type: object
       required: [message]
       properties:
         message:
           type: string
+      example:
+        message: A verification link has been sent to your email
     VerifyRegistrationResponse:
       type: object
       required: [token, user]
@@ -380,37 +1693,822 @@ components:
           description: JWT (subject = user id, claim `role`)
         user:
           $ref: '#/components/schemas/User'
-    UpdateUserInput:
+      example:
+        token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIzZjNlOWIyYSIsInJvbGUiOiJTVFVERU5UIn0.SIGNATURE
+        user:
+          id: 3f3e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
+          username: mdupont
+          firstName: Marie
+          lastName: Dupont
+          email: marie.dupont@hacheuil.edu
+          role: STUDENT
+          createdAt: 2023-09-04T09:00:00Z
+          updatedAt: null
+    Course:
+      type: object
+      required: [id, ref, title, type, credits, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        ref:
+          type: string
+          maxLength: 10
+          description: Course reference (e.g. `EP1`, `PRJ1`)
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/CourseType'
+        credits:
+          type: integer
+          minimum: 1
+          maximum: 30
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        id: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
+        ref: EP1
+        title: Digital Electronics
+        type: EL
+        credits: 6
+        createdAt: 2023-09-01T08:00:00Z
+        updatedAt: null
+    CreateCourseInput:
+      type: object
+      required: [ref, title, credits]
+      properties:
+        ref:
+          type: string
+          maxLength: 10
+          description: Course reference (e.g. `EP1`, `PRJ1`)
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/CourseType'
+          default: COMMON
+        credits:
+          type: integer
+          minimum: 1
+          maximum: 30
+      example:
+        ref: EP1
+        title: Digital Electronics
+        type: EL
+        credits: 6
+    UpdateCourseInput:
       type: object
       description: Partial update — only present fields are applied
       properties:
+        ref:
+          type: string
+          maxLength: 10
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/CourseType'
+        credits:
+          type: integer
+          minimum: 1
+          maximum: 30
+      example:
+        title: Digital Electronics (updated)
+    Exam:
+      type: object
+      required: [id, courseId, coefficient, academicYear, date, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        coefficient:
+          type: number
+          exclusiveMinimum: 0
+          description: Indicative weight of the exam. The coefficients of all exams of a course must sum to 1.
+        academicYear:
+          type: integer
+          description: Academic year the exam belongs to (e.g. `2023`)
+        date:
+          type: string
+          format: date-time
+          description: Exam date/time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        id: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
+        courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
+        coefficient: 0.5
+        academicYear: 2023
+        date: 2024-01-15T09:00:00Z
+        createdAt: 2023-12-01T10:00:00Z
+        updatedAt: null
+    CreateExamInput:
+      type: object
+      required: [courseId, coefficient, academicYear, date]
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        coefficient:
+          type: number
+          exclusiveMinimum: 0
+          description: Indicative weight of the exam. The coefficients of all exams of a course must sum to 1.
+        academicYear:
+          type: integer
+          description: Academic year the exam belongs to (e.g. `2023`)
+        date:
+          type: string
+          format: date-time
+          description: Exam date/time
+      example:
+        courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
+        coefficient: 0.5
+        academicYear: 2023
+        date: 2024-01-15T09:00:00Z
+    UpdateExamInput:
+      type: object
+      description: Partial update — only present fields are applied
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        coefficient:
+          type: number
+          exclusiveMinimum: 0
+        academicYear:
+          type: integer
+        date:
+          type: string
+          format: date-time
+      example:
+        coefficient: 0.2
+    TeacherExtension:
+      type: object
+      required: [id, ref, teacherStatus]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Teacher extension id
+        ref:
+          type: string
+          maxLength: 10
+        teacherStatus:
+          $ref: '#/components/schemas/TeacherStatus'
+      example:
+        id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+        ref: T001
+        teacherStatus: ACTIVE
+    UserWithTeacher:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required: [extension]
+          properties:
+            extension:
+              $ref: '#/components/schemas/TeacherExtension'
+      description: User account with its embedded teacher extension.
+      example:
+        id: 2f4e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
+        username: p.martin
+        firstName: Paul
+        lastName: Martin
+        email: paul.martin@hacheuil.edu
+        role: TEACHER
+        createdAt: 2023-09-01T08:00:00Z
+        updatedAt: null
+        extension:
+          id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+          ref: T001
+          teacherStatus: ACTIVE
+    CreateTeacherInput:
+      type: object
+      required: [username, password, firstName, lastName, email, ref]
+      description: Creates the user account (role TEACHER) and its teacher extension.
+      properties:
         username:
           type: string
+          maxLength: 50
+        password:
+          type: string
+          format: password
+          minLength: 12
+          description: 12+ chars with upper, lower, digit and special char
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        ref:
+          type: string
+          maxLength: 10
+      example:
+        username: p.martin
+        password: s3cur3P@ss
+        firstName: Paul
+        lastName: Martin
+        email: paul.martin@hacheuil.edu
+        ref: T001
+    UpdateTeacherInput:
+      type: object
+      description: Partial update — only present fields are applied
+      properties:
+        ref:
+          type: string
+          maxLength: 10
+        teacherStatus:
+          $ref: '#/components/schemas/TeacherStatus'
+      example:
+        teacherStatus: INACTIVE
+    StudentExtension:
+      type: object
+      required: [id, ref, learningPath, studentStatus]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Student extension id
+        ref:
+          type: string
+          maxLength: 10
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
+        learningPath:
+          $ref: '#/components/schemas/LearningPath'
+        studentStatus:
+          $ref: '#/components/schemas/StudentStatus'
+        graduationYear:
+          type: integer
+          nullable: true
+        promotionName:
+          type: string
+          maxLength: 30
+          nullable: true
+      example:
+        id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        ref: '2023-001'
+        joinedAt: 2023-09-04T09:00:00Z
+        learningPath: EL
+        studentStatus: ACTIVE
+        graduationYear: null
+        promotionName: null
+    UserWithStudent:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          required: [extension]
+          properties:
+            extension:
+              $ref: '#/components/schemas/StudentExtension'
+      description: User account with its embedded student extension.
+      example:
+        id: 3f3e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
+        username: mdupont
+        firstName: Marie
+        lastName: Dupont
+        email: marie.dupont@hacheuil.edu
+        role: STUDENT
+        createdAt: 2023-09-04T09:00:00Z
+        updatedAt: null
+        extension:
+          id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+          ref: '2023-001'
+          joinedAt: 2023-09-04T09:00:00Z
+          learningPath: EL
+          studentStatus: ACTIVE
+          graduationYear: null
+          promotionName: null
+    CreateStudentInput:
+      type: object
+      required: [username, password, firstName, lastName, email, ref, learningPath]
+      description: Creates the user account (role STUDENT) and its student extension.
+      properties:
+        username:
+          type: string
+          maxLength: 50
+        password:
+          type: string
+          format: password
+          minLength: 12
+          description: 12+ chars with upper, lower, digit and special char
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          maxLength: 100
+        ref:
+          type: string
+          maxLength: 10
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
+        learningPath:
+          $ref: '#/components/schemas/LearningPath'
+        promotionName:
+          type: string
+          maxLength: 30
+          description: Set when the student graduates; empty while active.
+          nullable: true
+      example:
+        username: mdupont
+        password: s3cur3P@ss
+        firstName: Marie
+        lastName: Dupont
+        email: marie.dupont@hacheuil.edu
+        ref: '2023-001'
+        joinedAt: 2023-09-04T09:00:00Z
+        learningPath: EL
+        promotionName: null
+    UpdateStudentInput:
+      type: object
+      description: Partial update — only present fields are applied
+      properties:
+        ref:
+          type: string
+          maxLength: 10
+        joinedAt:
+          type: string
+          format: date-time
+          nullable: true
+        learningPath:
+          $ref: '#/components/schemas/LearningPath'
+        studentStatus:
+          $ref: '#/components/schemas/StudentStatus'
+        graduationYear:
+          type: integer
+          nullable: true
+        promotionName:
+          type: string
+          maxLength: 30
+          nullable: true
+      example:
+        studentStatus: GRADUATED
+        graduationYear: 2026
+        promotionName: EL 2026
+    Class:
+      type: object
+      required: [id, ref, type, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        ref:
+          type: string
+          maxLength: 10
+          description: Class reference (e.g. `CQ1`, `TSMA1`)
+        type:
+          $ref: '#/components/schemas/CourseType'
+        createdAt:
+          type: string
+          format: date-time
+      example:
+        id: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        ref: CQ1
+        type: COMMON
+        createdAt: 2023-09-01T08:00:00Z
+    CreateClassInput:
+      type: object
+      required: [ref]
+      properties:
+        ref:
+          type: string
+          maxLength: 10
+          description: Class reference (e.g. `CQ1`, `TSMA1`)
+        type:
+          $ref: '#/components/schemas/CourseType'
+          default: COMMON
+      example:
+        ref: CQ1
+        type: COMMON
+    UpdateClassInput:
+      type: object
+      description: Partial update — only present fields are applied
+      properties:
+        ref:
+          type: string
+          maxLength: 10
+        type:
+          $ref: '#/components/schemas/CourseType'
+      example:
+        ref: CQ1
+    TeacherCourse:
+      type: object
+      required: [id, teacherId, courseId, assignedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        teacherId:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        assignedAt:
+          type: string
+          format: date-time
+      example:
+        id: 8f6a7b8c-9d0e-4f1a-2b3c-4d5e6f7a8b9c
+        teacherId: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+        courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
+        assignedAt: 2023-09-01T08:00:00Z
+    TeacherCourseDetail:
+      type: object
+      required: [id, teacher, course, assignedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        teacher:
+          $ref: '#/components/schemas/UserWithTeacher'
+        course:
+          $ref: '#/components/schemas/Course'
+        assignedAt:
+          type: string
+          format: date-time
+      example:
+        id: 8f6a7b8c-9d0e-4f1a-2b3c-4d5e6f7a8b9c
+        teacher:
+          id: 2f4e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
+          username: p.martin
+          firstName: Paul
+          lastName: Martin
+          email: paul.martin@hacheuil.edu
+          role: TEACHER
+          createdAt: 2023-09-01T08:00:00Z
+          updatedAt: null
+          extension:
+            id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+            ref: T001
+            teacherStatus: ACTIVE
+        course:
+          id: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
+          ref: EP1
+          title: Digital Electronics
+          type: EL
+          credits: 6
+          createdAt: 2023-09-01T08:00:00Z
+          updatedAt: null
+        assignedAt: 2023-09-01T08:00:00Z
+    CreateTeacherCourseInput:
+      type: object
+      required: [teacherId, courseId, assignedAt]
+      properties:
+        teacherId:
+          type: string
+          format: uuid
+        courseId:
+          type: string
+          format: uuid
+        assignedAt:
+          type: string
+          format: date-time
+      example:
+        teacherId: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+        courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
+        assignedAt: 2023-09-01T08:00:00Z
+    StudentClass:
+      type: object
+      required: [id, student, class, joinedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        student:
+          $ref: '#/components/schemas/UserWithStudent'
+        class:
+          $ref: '#/components/schemas/Class'
+        joinedAt:
+          type: string
+          format: date-time
+        leftAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        id: 9a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d
+        student:
+          id: 3f3e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
+          username: mdupont
+          firstName: Marie
+          lastName: Dupont
+          email: marie.dupont@hacheuil.edu
+          role: STUDENT
+          createdAt: 2023-09-04T09:00:00Z
+          updatedAt: null
+          extension:
+            id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+            ref: '2023-001'
+            joinedAt: 2023-09-04T09:00:00Z
+            learningPath: EL
+            studentStatus: ACTIVE
+            graduationYear: null
+            promotionName: null
+        class:
+          id: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+          ref: CQ1
+          type: COMMON
+          createdAt: 2023-09-01T08:00:00Z
+        joinedAt: 2023-09-04T09:00:00Z
+        leftAt: null
+    CreateStudentClassInput:
+      type: object
+      required: [studentId, classId, joinedAt]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        classId:
+          type: string
+          format: uuid
+        joinedAt:
+          type: string
+          format: date-time
+      example:
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        classId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        joinedAt: 2023-09-04T09:00:00Z
+    UpdateStudentClassInput:
+      type: object
+      required: [leftAt]
+      description: Closes the enrollment. Only `leftAt` is accepted.
+      properties:
+        leftAt:
+          type: string
+          format: date-time
+      example:
+        leftAt: 2023-12-20T17:00:00Z
+    Grade:
+      type: object
+      required: [id, studentId, examId, grade, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        grade:
+          type: number
+          minimum: 0
+          maximum: 20
+          description: Current value (most recent `history` entry)
+        createdAt:
+          type: string
+          format: date-time
+      example:
+        id: 0a8b9c0d-1e2f-4a3b-4c5d-6e7f8a9b0c1d
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
+        grade: 14.5
+        createdAt: 2024-01-20T10:00:00Z
+    CreateGradeInput:
+      type: object
+      required: [studentId, examId, grade]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        grade:
+          type: number
+          minimum: 0
+          maximum: 20
+        description:
+          type: string
+          description: Initial history note (optional)
+      example:
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
+        grade: 14.5
+        description: Final exam
+    UpdateGradeInput:
+      type: object
+      required: [grade, description]
+      description: Correction — appends a new `history` entry.
+      properties:
+        grade:
+          type: number
+          minimum: 0
+          maximum: 20
+        description:
+          type: string
+          description: Mandatory reason for the correction (e.g. "transcription error")
+      example:
+        grade: 15
+        description: Transcription error corrected
+    HistoryEntry:
+      type: object
+      required: [id, grade, description, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        grade:
+          type: number
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      example:
+        id: 1b9c0d1e-2f3a-4b4c-5d6e-7f8a9b0c1d2e
+        grade: 15
+        description: Transcription error corrected
+        createdAt: 2024-01-21T09:30:00Z
+    GradeReportRequest:
+      type: object
+      required: [studentId, academicYear]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        academicYear:
+          type: integer
+      example:
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        academicYear: 2023
+    GraduatedStudent:
+      type: object
+      required: [rank, studentId, firstName, lastName, average]
+      properties:
+        rank:
+          type: integer
+          description: Rank within the promotion (1 = best average)
+        studentId:
+          type: string
+          format: uuid
         firstName:
           type: string
         lastName:
           type: string
+        average:
+          type: number
+          description: General average over the 3 years
+      example:
+        rank: 1
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        firstName: Marie
+        lastName: Dupont
+        average: 16.8
+    GraduatesResponse:
+      type: object
+      required: [promotion, graduates]
+      properties:
+        promotion:
+          type: string
+        graduates:
+          type: array
+          items:
+            $ref: '#/components/schemas/GraduatedStudent'
+      example:
+        promotion: EL 2026
+        graduates:
+          - rank: 1
+            studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+            firstName: Marie
+            lastName: Dupont
+            average: 16.8
+          - rank: 2
+            studentId: 2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+            firstName: Jean
+            lastName: Bernard
+            average: 15.9
     Meta:
       type: object
       required: [page, size, total]
       properties:
         page:
           type: integer
+          minimum: 1
         size:
           type: integer
+          minimum: 1
+          maximum: 100
         total:
           type: integer
           format: int64
-    UserListResponse:
+      example:
+        page: 1
+        size: 10
+        total: 1
+    CourseListResponse:
       type: object
       required: [data, meta]
       properties:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/User'
+            $ref: '#/components/schemas/Course'
         meta:
           $ref: '#/components/schemas/Meta'
+    ExamListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Exam'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    TeacherListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserWithTeacher'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    StudentListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserWithStudent'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    ClassListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Class'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    TeacherCourseListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherCourseDetail'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    StudentClassListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentClass'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    GradeListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Grade'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    HistoryListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
     ErrorBody:
       type: object
       required: [status, error, message, timestamp]
