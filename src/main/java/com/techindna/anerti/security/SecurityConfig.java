@@ -50,6 +50,8 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "TEACHER")
                     .requestMatchers(HttpMethod.POST, "/groups")
                     .hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/groups")
+                    .hasAnyRole("ADMIN", "TEACHER")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
