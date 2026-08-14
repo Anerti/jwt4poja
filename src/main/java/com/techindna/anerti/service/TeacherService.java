@@ -3,6 +3,7 @@ package com.techindna.anerti.service;
 import com.techindna.anerti.dto.CreateTeacherInput;
 import com.techindna.anerti.dto.UserExtendTeacher;
 import com.techindna.anerti.exception.http.ConflictException;
+import com.techindna.anerti.mapper.TeacherInheritanceMapper;
 import com.techindna.anerti.mapper.UserMapper;
 import com.techindna.anerti.repository.TeacherInheritanceRepository;
 import com.techindna.anerti.repository.UserRepository;
@@ -22,6 +23,7 @@ public class TeacherService {
   private final TeacherInheritanceRepository teacherInheritanceRepository;
   private final UserValidator userValidator;
   private final UserMapper userMapper;
+  private final TeacherInheritanceMapper teacherInheritanceMapper;
   private final PasswordEncoder passwordEncoder;
 
   @Transactional
@@ -30,11 +32,11 @@ public class TeacherService {
 
     try {
       JTeacherInheritance inheritance =
-          teacherInheritanceRepository.save(userMapper.toJTeacherInheritance(request));
+          teacherInheritanceRepository.save(teacherInheritanceMapper.toRepository(request));
 
-      return userMapper.toUserExtendTeacher(
+      return teacherInheritanceMapper.toDto(
           userRepository.saveAndFlush(
-              userMapper.toJUser(
+              userMapper.toRepository(
                   request, passwordEncoder.encode(request.password()), inheritance)));
     } catch (DataIntegrityViolationException e) {
       conflictFrom(e, request);

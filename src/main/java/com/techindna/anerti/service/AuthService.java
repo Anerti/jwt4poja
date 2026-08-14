@@ -91,7 +91,7 @@ public class AuthService {
 
     String jwtToken =
         jwtTokenProvider.generateToken(jUser.getId().toString(), jUser.getRole().name());
-    return new VerifyRegistrationResponse(jwtToken, userMapper.toDomain(jUser));
+    return new VerifyRegistrationResponse(jwtToken, userMapper.toEntity(jUser));
   }
 
   private void sendVerificationLink(
