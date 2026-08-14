@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-**jwt4poja** (`com.techindna.anerti`, Gradle project `jwt4poja-962dc383`) — a POJA (poja.io) generated AWS-serverless Spring Boot 3.2 backend for a **grade-management system** serving a 3-year L2 program (`L2` — two learning paths: `EL` / `TN`, with shared `COMMON` courses). Currently **the auth slice and teacher provisioning are implemented**; the rest of the domain is the intended contract, captured in the OpenAPI spec and the Obsidian MCD.
+**jwt4poja** (`com.techindna.anerti`, Gradle project `jwt4poja-962dc383`) — a POJA (poja.io) generated AWS-serverless Spring Boot 3.2 backend for a **grade-management system** serving a 3-year L2 program (`L2` — two learning paths: `EL` / `TN`, with shared `COMMON` courses). Currently **the auth slice, teacher provisioning and course management are implemented**; the rest of the domain is the intended contract, captured in the OpenAPI spec and the Obsidian MCD.
 
 - **Stack:** Java 21, Spring Boot 3.2.2, Gradle 8.5 (wrapper), Lombok 1.18.30, JaCoCo 0.8.11; Spring Data JPA, PostgreSQL, Spring Data Redis, Spring Security (Argon2), Thymeleaf, jjwt 0.12, BouncyCastle.
 - **Deployment:** AWS Lambda + API Gateway, serverless via SAM. Async via EventBridge → SQS → Lambda worker; email via SES; reports stored on S3 and streamed to the client. CD triggers on push to `preprod` / `prod` branches (see `.github/workflows/cd-compute.yml`). Region: `eu-west-3`.
@@ -23,7 +23,7 @@ The intended product is a grade-management system. Authoritative contract: [`doc
 | `TEACHER` | Read courses / exams; create / update / delete exams and grade for the courses assigned to them. |
 | `STUDENT` | Read their own profile, grades and grade history. |
 
-There is **no public registration**: an `ADMIN` provisions every account through `POST /students` / `POST /teachers`. Only `/auth/**` is public.
+There is **no public registration**: an `ADMIN` provisions every account through `POST /students` / `POST /teachers`. Only `/auth/**` and the course catalog listing (`GET /courses`) are public.
 
 ### Conceptual data model (9 tables, all in schema `jwt4poja_app`)
 
@@ -41,7 +41,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 ### API surface (per tag, from the spec)
 
 - **auth** — `POST /auth/login`, `GET /auth/verification/{token}` (no public register).
-- **courses** — `POST/GET /courses`, `GET/PATCH /courses/{courseId}` (ADMIN manages, TEACHER reads).
+- **courses** — `POST/GET /courses`, `GET/PATCH /courses/{courseId}` (ADMIN manages, public catalog listing).
 - **exams** — `POST/GET /exams`, `GET/PATCH/DELETE /exams/{examId}` (ADMIN + TEACHER; TEACHER scoped to assigned courses).
 - **teachers** — `POST/GET /teachers`, `GET/PATCH /teachers/{teacherId}` (ADMIN).
 - **students** — `POST/GET /students`, `GET/PATCH /students/{studentId}` (ADMIN manages; TEACHER + owner read).
@@ -53,7 +53,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ## Current state
 
-**Auth + teacher provisioning implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`). `student_inheritance` has a JPA entity (`JStudentInheritance`) and its enums but no DTOs or endpoints yet; `course`, `exam`, `grade`, `history`, etc. have no Java at all.
+**Auth + teacher provisioning + course management implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`) and `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`). `student_inheritance` has a JPA entity (`JStudentInheritance`) and its enums but no DTOs or endpoints yet; `exam`, `grade`, `history`, etc. have no Java at all.
 
 ### Implemented endpoints (hand-written, no `@PojaGenerated`)
 
@@ -62,39 +62,44 @@ There is **no public registration**: an `ADMIN` provisions every account through
   - `GET /auth/verification/{token}` — 200 JWT + user, 401 invalid token.
 - **Teachers** — `endpoint/rest/controller/TeacherController.java`:
   - `POST /teachers` — 201 `UserExtendTeacher` (ADMIN-only); provisions a `user` row plus its `teacher_inheritance`, validates input, maps unique violations to 409.
+- **Courses** — `endpoint/rest/controller/CourseController.java`:
+  - `POST /courses` — 201 `CourseOutput` (ADMIN-only); validates input, maps unique `ref` violations to 409.
+  - `GET /courses` — 200 `CourseListResponse` (public); `search` substring on `ref`/`title`, exact `type` filter, `page`/`size` pagination.
 - **Health (POJA scaffold)** — `GET /ping`, `GET /health/email`, `GET /health/bucket`.
 
 ### Hand-written layer (all ported, none carry `@PojaGenerated`)
 
-- `endpoint/rest/controller/{AuthController, TeacherController}`.
-- `service/AuthService`, `service/TeacherService`, `service/VerificationCodeStore` (Redis 15-min tokens).
+- `endpoint/rest/controller/{AuthController, TeacherController, CourseController}`.
+- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/VerificationCodeStore` (Redis 15-min tokens).
 - `security/` — `SecurityConfig` (stateless; role enforcement via `requestMatchers(...).hasRole("ADMIN")`), `security/jwt/{JwtTokenProvider, JwtAuthenticationFilter}`.
-- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance}`.
-- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`).
-- `validator/DataValidator`, `validator/UserValidator`.
+- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, CourseRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse}`.
+- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`), `mapper/CourseMapper` (`CreateCourseInput` → `JCourse`, `JCourse` → `CourseOutput`).
+- `validator/DataValidator`, `validator/UserValidator`, `validator/CourseValidator`.
 - `exception/ErrorBody`, `exception/GlobalExceptionHandler`, `exception/http/*` (BadRequest / Conflict / Forbidden / Gone / NotFound / Unauthorized / UnprocessableContent).
 - `entity/User` (domain record) and `repository/enums/{UserRole, TeacherStatus, StudentStatus, Level, LearningPath}`. `UserRole` already matches the spec triple `ADMIN` / `TEACHER` / `STUDENT` (no legacy `CUSTOMER`).
-- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`.
+- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`.
 - `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService` (auth email pipeline).
 - Mail template `resources/templates/mail/login-verification.html`.
 
 ### Database state
 
-- `src/main/resources/db/migration/V1__init.sql` — schema `jwt4poja_app` with the spec role triple `(ADMIN, TEACHER, STUDENT)` and the `teacher_inheritance` / `student_inheritance` / `user` tables. Applied manually, not via Flyway. Still ahead of the code: `student_inheritance` has a JPA entity but no DTOs / endpoints, and `course` / `exam` / `grade` / `history` etc. exist only in `doc/mcd.canvas`, not in the DDL.
-- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50.
+- `src/main/resources/db/migration/V1__init.sql` — schema `jwt4poja_app` with the spec role triple `(ADMIN, TEACHER, STUDENT)` and the `teacher_inheritance` / `student_inheritance` / `user` tables. Applied manually, not via Flyway. Still ahead of the code: `student_inheritance` has a JPA entity but no DTOs / endpoints, and `exam` / `grade` / `history` etc. exist only in `doc/mcd.canvas`, not in the DDL.
+- `src/main/resources/db/migration/V2__add_course.sql` — the `course` table (`ref` unique, `title`, `type` enum, `credits`) + its `course_type` enum.
+- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50. `test-course-init.sql` mirrors V2 for the Testcontainers test DB.
 
 ### Integration tests
 
 `src/test/java/com/techindna/anerti/endpoint/rest/controller/`:
 
 - `auth/LoginIT`, `auth/AuthVerificationIT`.
-- `teachers/PostTeachersIT`.
+- `teachers/PostTeachersIT`, `teachers/GetTeachersIT`.
+- `courses/PostCoursesIT`, `courses/GetCoursesIT`.
 
-No ITs yet for courses / exams / students / classes / assignments / enrollments / grades / reports, nor for the remaining teacher paths (`GET /teachers`, `GET/PATCH /teachers/{teacherId}`).
+No ITs yet for exams / students / classes / assignments / enrollments / grades / reports, nor for `GET/PATCH /teachers/{teacherId}`.
 
 ### Out of scope right now (spec only, no Java)
 
-Everything under `/courses`, `/exams`, `/students`, `/classes`, `/teacher-courses`, `/student-classes`, `/grades`, `/grade-reports`, `/graduations`, plus `GET /teachers` and `GET/PATCH /teachers/{teacherId}` — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
+Everything under `/exams`, `/students`, `/classes`, `/teacher-courses`, `/student-classes`, `/grades`, `/grade-reports`, `/graduations`, plus `GET/PATCH /teachers/{teacherId}` and the remaining course paths (`GET/PATCH /courses/{courseId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
 
 ## Commands
 
@@ -118,7 +123,7 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 - **Layering (POJA style):** REST `endpoint/rest/controller/` → `service/` → `repository/`; DTOs as immutable `record`s in `dto/`; async via `EventProducer` in `endpoint/event/` (controller → `EventProducer` → EventBridge → SQS → `MailboxEventHandler` → `EventServiceInvoker` → `service/event/{EventName}Service`).
 - **Load-bearing package rules:** event classes MUST live in `endpoint/event/model/` and extend `PojaEvent` (override `maxConsumerDuration()`, `maxConsumerBackoffBetweenRetries()`); consumer services MUST be `service/event/{EventName}Service` implementing `Consumer<{EventName}>` — `EventServiceInvoker` maps event FQCN → service class reflectively.
 - **Errors:** shared `ErrorBody` `{status, error, message, timestamp}` via `GlobalExceptionHandler` (in `exception/`); use the existing exception types in `exception/http/` (`ConflictException`, `UnprocessableContentException`, `ForbiddenException`, `UnauthorizedException`, `NotFoundException`, `BadRequestException`, `GoneException`) rather than raw `ResponseEntity`s. Spring's missing-path-variable and missing-request-parameter exceptions map to 400 via dedicated handlers in `GlobalExceptionHandler`.
-- **Security:** JWT bearer auth (jjwt 0.12) in `security/` — `JwtTokenProvider` signs with the key from `app.jwt.secret` (base64, ≥256 bits) for `app.jwt.expiration-ms`; `JwtAuthenticationFilter` turns the `role` claim into `ROLE_*` authorities; `SecurityConfig` is stateless and permits `/auth/**` + `/ping`, everything else requires auth. Passwords: `Argon2PasswordEncoder` (needs BouncyCastle). Role checks live in `SecurityConfig` via `requestMatchers(...).hasRole("ADMIN")` (e.g. `POST /teachers`); owner / finer-grained checks go inside services.
+- **Security:** JWT bearer auth (jjwt 0.12) in `security/` — `JwtTokenProvider` signs with the key from `app.jwt.secret` (base64, ≥256 bits) for `app.jwt.expiration-ms`; `JwtAuthenticationFilter` turns the `role` claim into `ROLE_*` authorities; `SecurityConfig` is stateless and permits `/auth/**`, `/ping` and `GET /courses`, everything else requires auth. Passwords: `Argon2PasswordEncoder` (needs BouncyCastle). Role checks live in `SecurityConfig` via `requestMatchers(...).hasRole("ADMIN")` (e.g. `POST /teachers`); owner / finer-grained checks go inside services.
 - **Style:** Lombok `@AllArgsConstructor` / `@Builder` / `@Data`; `lombok.addLombokGeneratedAnnotation = true`.
 - **Tests:** `@SpringBootTest(webEnvironment = RANDOM_PORT)` ITs extending `FacadeIT`; AWS beans get dummy values via `@DynamicPropertySource` (`EventConf` / `BucketConf` / `EmailConf` in `src/test/java/.../conf/`). Mock `EventProducer` in ITs that hit endpoints emitting events (real bean would call AWS).
 - **Spec-first:** when implementing a new domain, start from the OpenAPI path / schemas, the MCD, and (if needed) the `database conceptual data model` document. Keep `doc/api.yml` and the code in lockstep — update the spec first, then port the Java, then add ITs. The repo's own `mcd.canvas` is the authority for table shape (columns, uniques, enums).
@@ -131,6 +136,6 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 
 ## Git
 
-- Branches: `post-teachers` (current work branch — teacher provisioning), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
+- Branches: `get-courses` (current work branch — course management), `post-teachers` (teacher provisioning), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
 - History: Poja auto-commits (`poja: deployment ID: …`). Hand-written work follows short conventional commits (`feat:` / `docs:` / `build:` / `refactor:` / `test:` / `chore:`), typically one per file; multi-file endpoint features may bundle in one `feat:` commit.
 - Don't commit, push, or rewrite history unless asked.
