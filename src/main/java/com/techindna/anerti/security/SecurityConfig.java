@@ -34,6 +34,8 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers("/auth/**", "/ping")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/courses")
+                    .permitAll()
                     .requestMatchers("/health/email", "/health/bucket")
                     .hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/teachers")

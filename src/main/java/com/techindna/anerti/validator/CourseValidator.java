@@ -17,6 +17,12 @@ public class CourseValidator {
     validateCredits(request.credits());
   }
 
+  public void validateListFilters(String search) {
+    if (search != null && !search.isBlank()) {
+      dataValidator.validateSearchString(search);
+    }
+  }
+
   private void validateCredits(Integer credits) {
     if (credits == null) {
       throw new UnprocessableContentException("credits is required and cannot be blank");

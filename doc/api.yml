@@ -8,14 +8,15 @@ info:
 
     Roles: `ADMIN`, `TEACHER`, `STUDENT`. There is no public registration:
     accounts are created by an `ADMIN` (`POST /students`, `POST /teachers`).
-    Auth endpoints (`/auth/**`) are public; everything else requires a JWT.
+    Auth endpoints (`/auth/**`) and the course catalog listing (`GET /courses`)
+    are public; everything else requires a JWT.
 servers:
   - url: http://localhost:8080
 tags:
   - name: auth
     description: Login and email verification (public)
   - name: courses
-    description: Courses and course catalog (ADMIN manages, TEACHER reads)
+    description: Courses and course catalog (ADMIN manages, public catalog listing)
   - name: exams
     description: Exams per course and academic year (ADMIN manages, TEACHER reads)
   - name: teachers
@@ -125,14 +126,12 @@ paths:
           $ref: '#/components/responses/InternalServerError'
     get:
       tags: [courses]
-      summary: List courses (ADMIN, TEACHER)
+      summary: List courses (public)
       description: |
-        Lists courses ordered by `createdAt`. `search` matches `ref` or `title`
-        (case-insensitive substring, partial match). `type` filters by exact
-        learning path.
+        Public endpoint — no authentication required. Lists courses ordered by
+        `createdAt`. `search` matches `ref` or `title` (case-insensitive
+        substring, partial match). `type` filters by exact learning path.
       operationId: listCourses
-      security:
-        - bearerAuth: []
       parameters:
         - name: search
           in: query
@@ -165,10 +164,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CourseListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
         '500':
