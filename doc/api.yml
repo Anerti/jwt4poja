@@ -630,7 +630,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithStudent'
+                $ref: '#/components/schemas/UserExtendStudent'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -724,7 +724,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithStudent'
+                $ref: '#/components/schemas/UserExtendStudent'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -762,7 +762,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithStudent'
+                $ref: '#/components/schemas/UserExtendStudent'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1971,7 +1971,7 @@ components:
         studentStatus: ACTIVE
         graduationYear: null
         className: null
-    UserWithStudent:
+    UserExtendStudent:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
@@ -2206,7 +2206,7 @@ components:
           type: string
           format: uuid
         student:
-          $ref: '#/components/schemas/UserWithStudent'
+          $ref: '#/components/schemas/UserExtendStudent'
         class:
           $ref: '#/components/schemas/Class'
         joinedAt:
@@ -2466,7 +2466,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/UserWithStudent'
+            $ref: '#/components/schemas/UserExtendStudent'
         meta:
           $ref: '#/components/schemas/Meta'
     ClassListResponse:
