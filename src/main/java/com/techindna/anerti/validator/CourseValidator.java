@@ -13,7 +13,7 @@ public class CourseValidator {
 
   public void validateCreateCourse(CreateCourseInput request) {
     dataValidator.validateRef(request.ref());
-    dataValidator.checkNullData("title", request.title());
+    dataValidator.validateTitle(request.title());
     validateCredits(request.credits());
   }
 
