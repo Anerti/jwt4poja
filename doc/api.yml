@@ -797,7 +797,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Group'
+                $ref: '#/components/schemas/GroupOutput'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -879,7 +879,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Group'
+                $ref: '#/components/schemas/GroupOutput'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -914,7 +914,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Group'
+                $ref: '#/components/schemas/GroupOutput'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2075,7 +2075,7 @@ components:
       example:
         studentStatus: GRADUATED
         graduationYear: 2026
-    Group:
+    GroupOutput:
       type: object
       required: [id, ref, type, createdAt]
       properties:
@@ -2208,7 +2208,7 @@ components:
         student:
           $ref: '#/components/schemas/UserExtendStudent'
         group:
-          $ref: '#/components/schemas/Group'
+          $ref: '#/components/schemas/GroupOutput'
         joinedAt:
           type: string
           format: date-time
@@ -2476,7 +2476,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Group'
+            $ref: '#/components/schemas/GroupOutput'
         meta:
           $ref: '#/components/schemas/Meta'
     TeacherCourseListResponse:
