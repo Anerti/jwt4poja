@@ -1694,6 +1694,8 @@ components:
           description: Course reference (e.g. `EP1`, `PRJ1`)
         title:
           type: string
+          maxLength: 100
+          pattern: '^[A-Za-z0-9èéê -]+$'
         type:
           $ref: '#/components/schemas/CourseType'
         credits:
@@ -1725,6 +1727,9 @@ components:
           description: Course reference (e.g. `EP1`, `PRJ1`)
         title:
           type: string
+          maxLength: 100
+          pattern: '^[A-Za-z0-9èéê -]+$'
+          description: Course title. May only contain letters, numbers, spaces, and the symbols `- è é ê`.
         type:
           $ref: '#/components/schemas/CourseType'
           default: COMMON
@@ -1746,6 +1751,9 @@ components:
           maxLength: 10
         title:
           type: string
+          maxLength: 100
+          pattern: '^[A-Za-z0-9èéê -]+$'
+          description: Course title. May only contain letters, numbers, spaces, and the symbols `- è é ê`.
         type:
           $ref: '#/components/schemas/CourseType'
         credits:

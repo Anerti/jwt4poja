@@ -13,6 +13,7 @@ public class DataValidator {
   private static final Pattern USERNAME_FORMAT = Pattern.compile("^[a-zA-Z_0-9-]{2,}$");
   private static final Pattern SEARCH_FORMAT = Pattern.compile("^[a-zA-Z0-9_@.'éèê -]+$");
   private static final Pattern REF_FORMAT = Pattern.compile("^[A-Za-z0-9-]+$");
+  private static final Pattern TITLE_FORMAT = Pattern.compile("^[A-Za-z0-9èéê -]+$");
 
   public void checkNullData(String field, String value) {
     if (value == null || value.isBlank()) {
@@ -25,6 +26,19 @@ public class DataValidator {
     if (value != null && value.length() > maxLength) {
       throw new UnprocessableContentException(
           String.format("%s must not exceed %s characters", field, maxLength));
+    }
+  }
+
+  public void validateTitle(String value) {
+    checkNullData("title", value);
+    checkStringLength("title", value, 100);
+
+    if (!TITLE_FORMAT.matcher(value).matches()) {
+      throw new UnprocessableContentException(
+          String.format(
+              "Title %s is invalid, it may only contain letters, numbers, spaces, and the symbols -"
+                  + " è é ê",
+              value));
     }
   }
 
