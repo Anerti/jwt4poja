@@ -23,8 +23,8 @@ tags:
     description: Teacher accounts and teacher inheritance records (ADMIN)
   - name: students
     description: Student accounts and student inheritance records (ADMIN; owner read)
-  - name: classes
-    description: Student groups/classes (ADMIN manages, TEACHER reads)
+  - name: groups
+    description: Student groups (ADMIN manages, TEACHER reads)
   - name: assignments
     description: Course-to-teacher assignments per year (ADMIN)
   - name: enrollments
@@ -777,12 +777,12 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /classes:
+  /groups:
     post:
-      tags: [classes]
-      summary: Create a class/group (ADMIN)
+      tags: [groups]
+      summary: Create a group (ADMIN)
       description: Creates a student group (e.g. `CQ1`, `TSMA1`). `ref` must be unique.
-      operationId: createClass
+      operationId: createGroup
       security:
         - bearerAuth: []
       requestBody:
@@ -790,14 +790,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateClassInput'
+              $ref: '#/components/schemas/CreateGroupInput'
       responses:
         '201':
-          description: Class created
+          description: Group created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Class'
+                $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -811,12 +811,12 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     get:
-      tags: [classes]
-      summary: List classes (ADMIN, TEACHER)
+      tags: [groups]
+      summary: List groups (ADMIN, TEACHER)
       description: |
-        Lists classes. `search` matches `ref` (case-insensitive substring,
+        Lists groups. `search` matches `ref` (case-insensitive substring,
         partial match). `type` filters by exact learning path.
-      operationId: listClasses
+      operationId: listGroups
       security:
         - bearerAuth: []
       parameters:
@@ -846,11 +846,11 @@ paths:
             default: 10
       responses:
         '200':
-          description: Page of classes
+          description: Page of groups
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ClassListResponse'
+                $ref: '#/components/schemas/GroupListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -859,15 +859,15 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /classes/{classId}:
+  /groups/{groupId}:
     get:
-      tags: [classes]
-      summary: Get a class by id (ADMIN, TEACHER)
-      operationId: getClass
+      tags: [groups]
+      summary: Get a group by id (ADMIN, TEACHER)
+      operationId: getGroup
       security:
         - bearerAuth: []
       parameters:
-        - name: classId
+        - name: groupId
           in: path
           required: true
           schema:
@@ -875,11 +875,11 @@ paths:
             format: uuid
       responses:
         '200':
-          description: The requested class
+          description: The requested group
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Class'
+                $ref: '#/components/schemas/Group'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -889,14 +889,14 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     patch:
-      tags: [classes]
-      summary: Partially update a class (ADMIN)
+      tags: [groups]
+      summary: Partially update a group (ADMIN)
       description: Only present fields are applied. A `ref` change must stay unique.
-      operationId: updateClass
+      operationId: updateGroup
       security:
         - bearerAuth: []
       parameters:
-        - name: classId
+        - name: groupId
           in: path
           required: true
           schema:
@@ -907,14 +907,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateClassInput'
+              $ref: '#/components/schemas/UpdateGroupInput'
       responses:
         '200':
-          description: The updated class
+          description: The updated group
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Class'
+                $ref: '#/components/schemas/Group'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -930,14 +930,14 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
     delete:
-      tags: [classes]
-      summary: Delete a class (ADMIN)
+      tags: [groups]
+      summary: Delete a group (ADMIN)
       description: Refused (409) when enrollments still reference it.
-      operationId: deleteClass
+      operationId: deleteGroup
       security:
         - bearerAuth: []
       parameters:
-        - name: classId
+        - name: groupId
           in: path
           required: true
           schema:
@@ -1076,12 +1076,12 @@ paths:
   /student-classes:
     post:
       tags: [enrollments]
-      summary: Enroll a student in a class (ADMIN)
+      summary: Enroll a student in a group (ADMIN)
       description: |
-        Enrolls a student in a class starting at `joinedAt`. Grades follow the
-        student, not the group — a student can change class mid-semester by
+        Enrolls a student in a group starting at `joinedAt`. Grades follow the
+        student, not the group — a student can change group mid-semester by
         closing the previous enrollment (`leftAt`) and opening a new one. A
-        given (student, class) pair is unique.
+        given (student, group) pair is unique.
       operationId: enrollStudent
       security:
         - bearerAuth: []
@@ -1114,12 +1114,12 @@ paths:
           $ref: '#/components/responses/InternalServerError'
     get:
       tags: [enrollments]
-      summary: List student-class enrollments
+      summary: List student-group enrollments
       description: |
         Lists enrollments. Each item embeds the full student user (with its
-        inheritance record) and the full class. `studentId` and `classId` are exact-match
+        inheritance record) and the full group. `studentId` and `groupId` are exact-match
         filters. ADMIN sees all enrollments; a TEACHER sees only the students
-        enrolled in classes (groups) they need for their courses.
+        enrolled in groups they need for their courses.
       operationId: listStudentClasses
       security:
         - bearerAuth: []
@@ -1130,7 +1130,7 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: classId
+        - name: groupId
           in: query
           required: false
           schema:
@@ -1168,7 +1168,7 @@ paths:
   /student-classes/{studentClassId}:
     patch:
       tags: [enrollments]
-      summary: Close a student's enrollment in a class (ADMIN)
+      summary: Close a student's enrollment in a group (ADMIN)
       description: |
         Sets `leftAt` to mark the end of the enrollment (e.g. group change
         mid-semester). Only `leftAt` can be updated.
@@ -1587,7 +1587,7 @@ components:
     CourseType:
       type: string
       enum: [EL, TN, COMMON]
-      description: Learning path a course or class belongs to. COMMON = shared by all paths.
+      description: Learning path a course or group belongs to. COMMON = shared by all paths.
     TeacherStatus:
       type: string
       enum: [ACTIVE, INACTIVE, OTHER]
@@ -2075,7 +2075,7 @@ components:
       example:
         studentStatus: GRADUATED
         graduationYear: 2026
-    Class:
+    Group:
       type: object
       required: [id, ref, type, createdAt]
       properties:
@@ -2085,7 +2085,7 @@ components:
         ref:
           type: string
           maxLength: 10
-          description: Class reference (e.g. `CQ1`, `TSMA1`)
+          description: Group reference (e.g. `CQ1`, `TSMA1`)
         type:
           $ref: '#/components/schemas/CourseType'
         createdAt:
@@ -2096,21 +2096,21 @@ components:
         ref: CQ1
         type: COMMON
         createdAt: 2023-09-01T08:00:00Z
-    CreateClassInput:
+    CreateGroupInput:
       type: object
       required: [ref]
       properties:
         ref:
           type: string
           maxLength: 10
-          description: Class reference (e.g. `CQ1`, `TSMA1`)
+          description: Group reference (e.g. `CQ1`, `TSMA1`)
         type:
           $ref: '#/components/schemas/CourseType'
           default: COMMON
       example:
         ref: CQ1
         type: COMMON
-    UpdateClassInput:
+    UpdateGroupInput:
       type: object
       description: Partial update — only present fields are applied
       properties:
@@ -2200,15 +2200,15 @@ components:
         assignedAt: 2023-09-01T08:00:00Z
     StudentClass:
       type: object
-      required: [id, student, class, joinedAt]
+      required: [id, student, group, joinedAt]
       properties:
         id:
           type: string
           format: uuid
         student:
           $ref: '#/components/schemas/UserExtendStudent'
-        class:
-          $ref: '#/components/schemas/Class'
+        group:
+          $ref: '#/components/schemas/Group'
         joinedAt:
           type: string
           format: date-time
@@ -2236,7 +2236,7 @@ components:
             studentStatus: ACTIVE
             graduationYear: null
             className: null
-        class:
+        group:
           id: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
           ref: CQ1
           type: COMMON
@@ -2245,12 +2245,12 @@ components:
         leftAt: null
     CreateStudentClassInput:
       type: object
-      required: [studentId, classId, joinedAt]
+      required: [studentId, groupId, joinedAt]
       properties:
         studentId:
           type: string
           format: uuid
-        classId:
+        groupId:
           type: string
           format: uuid
         joinedAt:
@@ -2258,7 +2258,7 @@ components:
           format: date-time
       example:
         studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
-        classId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
         joinedAt: 2023-09-04T09:00:00Z
     UpdateStudentClassInput:
       type: object
@@ -2469,14 +2469,14 @@ components:
             $ref: '#/components/schemas/UserExtendStudent'
         meta:
           $ref: '#/components/schemas/Meta'
-    ClassListResponse:
+    GroupListResponse:
       type: object
       required: [data, meta]
       properties:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/Class'
+            $ref: '#/components/schemas/Group'
         meta:
           $ref: '#/components/schemas/Meta'
     TeacherCourseListResponse:
