@@ -4,7 +4,6 @@ import com.techindna.anerti.dto.CreateTeacherInput;
 import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.dto.TeacherListResponse;
 import com.techindna.anerti.dto.UserExtendTeacher;
-import com.techindna.anerti.exception.http.ConflictException;
 import com.techindna.anerti.mapper.TeacherInheritanceMapper;
 import com.techindna.anerti.mapper.UserMapper;
 import com.techindna.anerti.repository.TeacherInheritanceRepository;
@@ -34,6 +33,7 @@ public class TeacherService {
   private final UserValidator userValidator;
   private final UserMapper userMapper;
   private final TeacherInheritanceMapper teacherInheritanceMapper;
+  private final UserConflictHandler userConflictHandler;
   private final PasswordEncoder passwordEncoder;
 
   @Transactional(readOnly = true)
@@ -75,22 +75,8 @@ public class TeacherService {
               userMapper.toRepository(
                   request, passwordEncoder.encode(request.password()), inheritance)));
     } catch (DataIntegrityViolationException e) {
-      conflictFrom(e, request);
+      userConflictHandler.conflictFrom(e, request.username(), request.email(), request.ref());
       throw e;
-    }
-  }
-
-  private void conflictFrom(DataIntegrityViolationException e, CreateTeacherInput request) {
-    String message = e.getMostSpecificCause().getMessage();
-    if (message.contains("username")) {
-      throw new ConflictException("Cannot use username %s".formatted(request.username().strip()));
-    }
-    if (message.contains("email")) {
-      throw new ConflictException(
-          "cannot use email %s".formatted(request.email().strip().toLowerCase()));
-    }
-    if (message.contains("ref")) {
-      throw new ConflictException("Cannot use ref %s".formatted(request.ref().strip()));
     }
   }
 }
