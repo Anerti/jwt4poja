@@ -496,7 +496,8 @@ paths:
       description: |
         Lists teachers. `search` matches `ref`, first name or last name
         (case-insensitive substring, partial match). `teacherStatus` filters by
-        exact status.
+        exact status. `page` is 1-indexed; a `page` or `size` below 1 or above
+        100 is not an error — it falls back to the default (1 and 10).
       operationId: listTeachers
       security:
         - bearerAuth: []
@@ -514,16 +515,16 @@ paths:
         - name: page
           in: query
           required: false
+          description: 1-indexed page. Values below 1 or above 100 fall back to 1.
           schema:
             type: integer
             default: 1
         - name: size
           in: query
           required: false
+          description: Page size. Values below 1 or above 100 fall back to 10.
           schema:
             type: integer
-            minimum: 1
-            maximum: 100
             default: 10
       responses:
         '200':
