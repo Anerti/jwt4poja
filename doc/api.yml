@@ -28,7 +28,7 @@ tags:
   - name: assignments
     description: Course-to-teacher assignments per year (ADMIN)
   - name: enrollments
-    description: Student-to-class enrollments (ADMIN)
+    description: Student-to-group enrollments (ADMIN)
   - name: grades
     description: Grades and grade history (ADMIN, TEACHER for own courses, STUDENT for own grades)
   - name: reports
@@ -1073,16 +1073,18 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /student-classes:
+  /student-groups:
     post:
       tags: [enrollments]
-      summary: Enroll a student in a group (ADMIN)
+      summary: Bulk enroll students in groups (ADMIN)
       description: |
-        Enrolls a student in a group starting at `joinedAt`. Grades follow the
-        student, not the group — a student can change group mid-semester by
-        closing the previous enrollment (`leftAt`) and opening a new one. A
-        given (student, group) pair is unique.
-      operationId: enrollStudent
+        Enrolls a list of students in groups starting at `joinedAt`, atomically
+        (all-or-nothing) — a failure in any enrollment rolls back the whole
+        batch. Grades follow the student, not the group — a student can change
+        group mid-semester by closing the previous enrollment (`leftAt`) and
+        opening a new one. A given (student, group) pair is unique; an
+        already-enrolled pair fails the whole batch with 409.
+      operationId: enrollStudents
       security:
         - bearerAuth: []
       requestBody:
@@ -1090,14 +1092,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateStudentClassInput'
+              $ref: '#/components/schemas/CreateStudentGroupRequest'
       responses:
         '201':
-          description: Enrollment created
+          description: Enrollments created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StudentClass'
+                $ref: '#/components/schemas/CreateStudentGroupListResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1108,8 +1110,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
     get:
@@ -1120,7 +1120,7 @@ paths:
         inheritance record) and the full group. `studentId` and `groupId` are exact-match
         filters. ADMIN sees all enrollments; a TEACHER sees only the students
         enrolled in groups they need for their courses.
-      operationId: listStudentClasses
+      operationId: listStudentGroups
       security:
         - bearerAuth: []
       parameters:
@@ -1156,7 +1156,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StudentClassListResponse'
+                $ref: '#/components/schemas/StudentGroupListResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1165,18 +1165,18 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /student-classes/{studentClassId}:
+  /student-groups/{studentGroupId}:
     patch:
       tags: [enrollments]
       summary: Close a student's enrollment in a group (ADMIN)
       description: |
         Sets `leftAt` to mark the end of the enrollment (e.g. group change
         mid-semester). Only `leftAt` can be updated.
-      operationId: updateStudentClass
+      operationId: updateStudentGroup
       security:
         - bearerAuth: []
       parameters:
-        - name: studentClassId
+        - name: studentGroupId
           in: path
           required: true
           schema:
@@ -1187,14 +1187,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateStudentClassInput'
+              $ref: '#/components/schemas/UpdateStudentGroupInput'
       responses:
         '200':
           description: The updated enrollment
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StudentClass'
+                $ref: '#/components/schemas/StudentGroup'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2198,7 +2198,7 @@ components:
         teacherId: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
         courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
         assignedAt: 2023-09-01T08:00:00Z
-    StudentClass:
+    StudentGroup:
       type: object
       required: [id, student, group, joinedAt]
       properties:
@@ -2243,7 +2243,37 @@ components:
           createdAt: 2023-09-01T08:00:00Z
         joinedAt: 2023-09-04T09:00:00Z
         leftAt: null
-    CreateStudentClassInput:
+    CreateStudentGroupRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateStudentGroupInput'
+    CreateStudentGroupOutput:
+      type: object
+      required: [studentId, groupId, joinedAt]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        joinedAt:
+          type: string
+          format: date-time
+        leftAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        joinedAt: 2023-09-04T09:00:00Z
+        leftAt: null
+    CreateStudentGroupInput:
       type: object
       required: [studentId, groupId, joinedAt]
       properties:
@@ -2260,7 +2290,7 @@ components:
         studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
         joinedAt: 2023-09-04T09:00:00Z
-    UpdateStudentClassInput:
+    UpdateStudentGroupInput:
       type: object
       required: [leftAt]
       description: Closes the enrollment. Only `leftAt` is accepted.
@@ -2489,14 +2519,24 @@ components:
             $ref: '#/components/schemas/TeacherCourseDetail'
         meta:
           $ref: '#/components/schemas/Meta'
-    StudentClassListResponse:
+    StudentGroupListResponse:
       type: object
       required: [data, meta]
       properties:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/StudentClass'
+            $ref: '#/components/schemas/StudentGroup'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    CreateStudentGroupListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateStudentGroupOutput'
         meta:
           $ref: '#/components/schemas/Meta'
     GradeListResponse:
