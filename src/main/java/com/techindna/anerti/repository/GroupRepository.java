@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,4 +25,8 @@ public interface GroupRepository extends JpaRepository<JGroup, UUID> {
       """)
   Page<JGroup> search(
       @Param("search") String search, @Param("type") String type, Pageable pageable);
+
+  @Modifying
+  @Query("DELETE FROM JGroup g WHERE g.id = :id")
+  int delete(@Param("id") UUID id);
 }
