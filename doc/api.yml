@@ -1078,10 +1078,12 @@ paths:
       tags: [enrollments]
       summary: Bulk enroll students in groups (ADMIN)
       description: |
-        Enrolls a list of students in groups starting at `joinedAt`, all in one
-        request. Grades follow the student, not the group — a student can change
+        Enrolls a list of students in groups starting at `joinedAt`, atomically
+        (all-or-nothing) — a failure in any enrollment rolls back the whole
+        batch. Grades follow the student, not the group — a student can change
         group mid-semester by closing the previous enrollment (`leftAt`) and
-        opening a new one. A given (student, group) pair is unique.
+        opening a new one. A given (student, group) pair is unique; an
+        already-enrolled pair fails the whole batch with 409.
       operationId: enrollStudents
       security:
         - bearerAuth: []
@@ -1108,8 +1110,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
     get:
