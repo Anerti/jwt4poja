@@ -35,7 +35,6 @@ Full OpenAPI spec: [`doc/api.yml`](doc/api.yml). Conceptual data model: [`doc/mc
 | --- | --- | --- |
 | `POST` | `/auth/register` | Public self-registration (legacy). 202 + verification email. **Not in the target spec — slated for removal.** |
 | `POST` | `/auth/login` | Login (202; login-verification email sent). |
-| `POST` | `/auth/resend-link?email=` | Resend the verification email (202; 403 unknown email). |
 | `GET` | `/auth/verification/{token}` | Verify a single-use 15-minute token → JWT + user (200; 401 invalid). |
 
 Flow: `register` or `login` → 15-minute single-use token in Redis → email link → `GET /auth/verification/{token}` → JWT (subject = user id, `role` claim).
@@ -120,7 +119,7 @@ Note: `gradlew` has no exec bit in this repo — use `sh gradlew …`.
 
 ## Tests
 
-The auth slice is covered by Testcontainers integration tests (PostgreSQL + Redis via `FacadeIT`) in `src/test/java/com/techindna/anerti/endpoint/rest/controller/auth/`: `RegisterIT`, `LoginIT`, `ResendLinkIT`, `AuthVerificationIT`. The user endpoints are covered by `UserListIT` and `UserGetIT` in `.../controller/users/`. Targeted run:
+The auth slice is covered by Testcontainers integration tests (PostgreSQL + Redis via `FacadeIT`) in `src/test/java/com/techindna/anerti/endpoint/rest/controller/auth/`: `LoginIT`, `AuthVerificationIT`. The user endpoints are covered by `UserListIT` and `UserGetIT` in `.../controller/users/`. Targeted run:
 
 ```bash
 sh gradlew test --tests "com.techindna.anerti.endpoint.rest.controller.users.*"
