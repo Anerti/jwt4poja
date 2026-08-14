@@ -278,7 +278,6 @@ class PostTeachersIT extends FacadeIT {
             .firstName("Some")
             .lastName("User")
             .email(email)
-            .verified(true)
             .role(role)
             .build());
   }
