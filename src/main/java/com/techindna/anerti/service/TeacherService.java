@@ -18,8 +18,6 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -45,25 +43,19 @@ public class TeacherService {
       dataValidator.validateSearchString(search);
     }
 
-    int validPage = defaultIfInvalid(page, 1, 100, 1);
-    int validSize = defaultIfInvalid(size, 1, 100, 10);
-    Pageable pageable = PageRequest.of(validPage - 1, validSize, Sort.by("createdAt", "username"));
+    PageRequestData p = PageRequestData.of(page, size, Sort.by("createdAt", "username"));
 
     Page<JUser> jUsers =
         userRepository.searchTeachers(
             search,
             teacherStatus == null ? null : teacherStatus.name(),
             UserRole.TEACHER,
-            pageable);
+            p.pageable());
 
     List<UserExtendTeacher> teachers =
         jUsers.getContent().stream().map(teacherInheritanceMapper::toDto).toList();
     return new TeacherListResponse(
-        teachers, new Meta(validPage, validSize, jUsers.getTotalElements()));
-  }
-
-  private int defaultIfInvalid(int value, int min, int max, int defaultValue) {
-    return (value < min || value > max) ? defaultValue : value;
+        teachers, new Meta(p.page(), p.size(), jUsers.getTotalElements()));
   }
 
   @Transactional
