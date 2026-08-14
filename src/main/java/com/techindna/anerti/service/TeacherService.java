@@ -12,6 +12,7 @@ import com.techindna.anerti.repository.enums.TeacherStatus;
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JTeacherInheritance;
 import com.techindna.anerti.repository.model.JUser;
+import com.techindna.anerti.validator.DataValidator;
 import com.techindna.anerti.validator.UserValidator;
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,7 @@ public class TeacherService {
   private final UserRepository userRepository;
   private final TeacherInheritanceRepository teacherInheritanceRepository;
   private final UserValidator userValidator;
+  private final DataValidator dataValidator;
   private final UserMapper userMapper;
   private final TeacherInheritanceMapper teacherInheritanceMapper;
   private final UserConflictHandler userConflictHandler;
@@ -39,7 +41,9 @@ public class TeacherService {
   @Transactional(readOnly = true)
   public TeacherListResponse listTeachers(
       String search, TeacherStatus teacherStatus, int page, int size) {
-    userValidator.validateListFilters(search);
+    if (search != null && !search.isBlank()) {
+      dataValidator.validateSearchString(search);
+    }
 
     int validPage = defaultIfInvalid(page, 1, 100, 1);
     int validSize = defaultIfInvalid(size, 1, 100, 10);
