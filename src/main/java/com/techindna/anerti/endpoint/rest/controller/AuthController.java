@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,13 +28,6 @@ public class AuthController {
       @RequestBody LoginInput request, HttpServletRequest servletRequest) {
     return ResponseEntity.status(HttpStatus.ACCEPTED)
         .body(authService.login(request, servletRequest));
-  }
-
-  @PostMapping("/resend-link")
-  public ResponseEntity<MessageBody> resendVerificationLink(
-      @RequestParam String email, HttpServletRequest servletRequest) {
-    return ResponseEntity.status(HttpStatus.ACCEPTED)
-        .body(authService.resendVerificationLink(email, servletRequest));
   }
 
   @GetMapping("/verification/{token}")

@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-**jwt4poja** (`com.techindna.anerti`, Gradle project `jwt4poja-962dc383`) — a POJA (poja.io) generated AWS-serverless Spring Boot 3.2 backend for a **grade-management system** serving a 3-year L2 program (`L2` — two learning paths: `EL` / `TN`, with shared `COMMON` courses). Currently **only the auth slice is implemented**; the rest of the domain is the intended contract, captured in the OpenAPI spec and the Obsidian MCD.
+**jwt4poja** (`com.techindna.anerti`, Gradle project `jwt4poja-962dc383`) — a POJA (poja.io) generated AWS-serverless Spring Boot 3.2 backend for a **grade-management system** serving a 3-year L2 program (`L2` — two learning paths: `EL` / `TN`, with shared `COMMON` courses). Currently **the auth slice and teacher provisioning are implemented**; the rest of the domain is the intended contract, captured in the OpenAPI spec and the Obsidian MCD.
 
 - **Stack:** Java 21, Spring Boot 3.2.2, Gradle 8.5 (wrapper), Lombok 1.18.30, JaCoCo 0.8.11; Spring Data JPA, PostgreSQL, Spring Data Redis, Spring Security (Argon2), Thymeleaf, jjwt 0.12, BouncyCastle.
 - **Deployment:** AWS Lambda + API Gateway, serverless via SAM. Async via EventBridge → SQS → Lambda worker; email via SES; reports stored on S3 and streamed to the client. CD triggers on push to `preprod` / `prod` branches (see `.github/workflows/cd-compute.yml`). Region: `eu-west-3`.
@@ -27,7 +27,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ### Conceptual data model (9 tables, all in schema `jwt4poja_app`)
 
-- `user` — shared identity (UUID pk, `username` / `email` unique, `password`, `firstName`, `lastName`, `role` enum, `verified`, `createdAt`, `updatedAt`).
+- `user` — shared identity (UUID pk, `username` / `email` unique, `password`, `firstName`, `lastName`, `role` enum, `createdAt`, `updatedAt`).
 - `teacher_extension` — 1-1 with `user` when `role = TEACHER` (`ref` unique, `teacherStatus` enum).
 - `student_extension` — 1-1 with `user` when `role = STUDENT` (`ref` unique, `learningPath` enum, `studentStatus` enum, `graduationYear`, `promotionName`).
 - `course` — catalog (`ref` unique, `title`, `type` enum, `credits`).
@@ -40,7 +40,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ### API surface (per tag, from the spec)
 
-- **auth** — `POST /auth/login`, `POST /auth/resend-link`, `GET /auth/verification/{token}` (no public register).
+- **auth** — `POST /auth/login`, `GET /auth/verification/{token}` (no public register).
 - **courses** — `POST/GET /courses`, `GET/PATCH /courses/{courseId}` (ADMIN manages, TEACHER reads).
 - **exams** — `POST/GET /exams`, `GET/PATCH/DELETE /exams/{examId}` (ADMIN + TEACHER; TEACHER scoped to assigned courses).
 - **teachers** — `POST/GET /teachers`, `GET/PATCH /teachers/{teacherId}` (ADMIN).
@@ -53,51 +53,48 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ## Current state
 
-**Auth slice implemented; everything else is spec-only.** The `user` table is the only ported domain object — `teacher_extension`, `student_extension`, `course`, `exam`, `grade`, etc. have no JPA entities, no DTOs, no controllers, no services, no ITs yet.
+**Auth + teacher provisioning implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`). `student_inheritance` has a JPA entity (`JStudentInheritance`) and its enums but no DTOs or endpoints yet; `course`, `exam`, `grade`, `history`, etc. have no Java at all.
 
 ### Implemented endpoints (hand-written, no `@PojaGenerated`)
 
 - **Auth** — `endpoint/rest/controller/AuthController.java`:
-  - `POST /auth/register` — 202 + verification email (kept for backward compat with the prior customer/admin iteration; the spec no longer advertises it).
   - `POST /auth/login` — 202 + login-verification link.
-  - `POST /auth/resend-link?email=` — 202; 403 unknown / already-verified email (`"No pending verification found for this email"`), 422 blank / invalid email, 400 missing param.
   - `GET /auth/verification/{token}` — 200 JWT + user, 401 invalid token.
-- **Users** — `endpoint/rest/controller/UserController.java`:
-  - `GET /users` — ADMIN-only; lists `CUSTOMER` users (legacy role), `search` substring on `username` / `firstName` / `lastName` / `email`, 1-based `page` / `size` (default 1 / 10, max 100), `sort` `ASC` | `DESC` on `createdAt`.
-  - `GET /users/{userId}` — owner or ADMIN; ADMIN cannot read another ADMIN (enforced in `ResourcesAccessRules.grantAccessFor`), 404 unknown, 400 malformed UUID.
+- **Teachers** — `endpoint/rest/controller/TeacherController.java`:
+  - `POST /teachers` — 201 `UserExtendTeacher` (ADMIN-only); provisions a `user` row plus its `teacher_inheritance`, validates input, maps unique violations to 409.
 - **Health (POJA scaffold)** — `GET /ping`, `GET /health/email`, `GET /health/bucket`.
 
 ### Hand-written layer (all ported, none carry `@PojaGenerated`)
 
-- `endpoint/rest/controller/{AuthController, UserController}`.
-- `service/AuthService`, `service/UserService`, `service/VerificationCodeStore` (Redis 15-min tokens).
-- `security/` — `JwtTokenProvider`, `JwtAuthenticationFilter`, `SecurityConfig`, `ResourcesAccessRules`.
-- `repository/AuthRepository`, `repository/UserRepository`, `repository/model/JUser` (single `user` table).
-- `mapper/UserMapper`.
+- `endpoint/rest/controller/{AuthController, TeacherController}`.
+- `service/AuthService`, `service/TeacherService`, `service/VerificationCodeStore` (Redis 15-min tokens).
+- `security/` — `SecurityConfig` (stateless; role enforcement via `requestMatchers(...).hasRole("ADMIN")`), `security/jwt/{JwtTokenProvider, JwtAuthenticationFilter}`.
+- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance}`.
+- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`).
 - `validator/DataValidator`, `validator/UserValidator`.
 - `exception/ErrorBody`, `exception/GlobalExceptionHandler`, `exception/http/*` (BadRequest / Conflict / Forbidden / Gone / NotFound / Unauthorized / UnprocessableContent).
-- `entity/User`, `entity/enums/{UserRole, SortDirection}`. **Note:** the current `UserRole` enum still holds `CUSTOMER` / `ADMIN` — it has not been migrated to the spec's `ADMIN` / `TEACHER` / `STUDENT` triple yet. Treat the DB DDL and the spec as the source of truth going forward.
-- `dto/` — `RegisterInput`, `LoginInput`, `MessageBody`, `VerifyRegistrationResponse`, `UpdateUserInput`, `Meta`, `UserListResponse`.
+- `entity/User` (domain record) and `repository/enums/{UserRole, TeacherStatus, StudentStatus, Level, LearningPath}`. `UserRole` already matches the spec triple `ADMIN` / `TEACHER` / `STUDENT` (no legacy `CUSTOMER`).
+- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`.
 - `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService` (auth email pipeline).
-- Mail templates `resources/templates/mail/{verification, login-verification}.html`.
+- Mail template `resources/templates/mail/login-verification.html`.
 
 ### Database state
 
-- `src/main/resources/db/migration/V1__init.sql` — still the **legacy** schema: `user_role` enum `(CUSTOMER, ADMIN)` + `user` table, schema `jwt4poja_app`, default role `CUSTOMER`, `username` `VARCHAR(50)`. Applied manually, not via Flyway. **This DDL is out of sync with `doc/mcd.canvas`** (the MCD has 9 tables and the `ADMIN` / `TEACHER` / `STUDENT` role triple). Migration to the full MCD is pending.
-- `src/test/resources/test-init.sql` — mirrors the legacy `user` table only (no other domains are ported); its `username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50.
+- `src/main/resources/db/migration/V1__init.sql` — schema `jwt4poja_app` with the spec role triple `(ADMIN, TEACHER, STUDENT)` and the `teacher_inheritance` / `student_inheritance` / `user` tables. Applied manually, not via Flyway. Still ahead of the code: `student_inheritance` has a JPA entity but no DTOs / endpoints, and `course` / `exam` / `grade` / `history` etc. exist only in `doc/mcd.canvas`, not in the DDL.
+- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50.
 
 ### Integration tests
 
 `src/test/java/com/techindna/anerti/endpoint/rest/controller/`:
 
-- `auth/RegisterIT`, `auth/LoginIT`, `auth/ResendLinkIT`, `auth/AuthVerificationIT`.
-- `users/UserListIT`, `users/UserGetIT`.
+- `auth/LoginIT`, `auth/AuthVerificationIT`.
+- `teachers/PostTeachersIT`.
 
-No ITs yet for courses / exams / teachers / students / classes / assignments / enrollments / grades / reports.
+No ITs yet for courses / exams / students / classes / assignments / enrollments / grades / reports, nor for the remaining teacher paths (`GET /teachers`, `GET/PATCH /teachers/{teacherId}`).
 
 ### Out of scope right now (spec only, no Java)
 
-All paths under `/courses`, `/exams`, `/teachers`, `/students`, `/classes`, `/teacher-courses`, `/student-classes`, `/grades`, `/grade-reports`, `/graduations` — plus the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. `ResourcesAccessRules` and the security / exception / validation infrastructure are already in place and reusable.
+Everything under `/courses`, `/exams`, `/students`, `/classes`, `/teacher-courses`, `/student-classes`, `/grades`, `/grade-reports`, `/graduations`, plus `GET /teachers` and `GET/PATCH /teachers/{teacherId}` — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
 
 ## Commands
 
@@ -121,7 +118,7 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 - **Layering (POJA style):** REST `endpoint/rest/controller/` → `service/` → `repository/`; DTOs as immutable `record`s in `dto/`; async via `EventProducer` in `endpoint/event/` (controller → `EventProducer` → EventBridge → SQS → `MailboxEventHandler` → `EventServiceInvoker` → `service/event/{EventName}Service`).
 - **Load-bearing package rules:** event classes MUST live in `endpoint/event/model/` and extend `PojaEvent` (override `maxConsumerDuration()`, `maxConsumerBackoffBetweenRetries()`); consumer services MUST be `service/event/{EventName}Service` implementing `Consumer<{EventName}>` — `EventServiceInvoker` maps event FQCN → service class reflectively.
 - **Errors:** shared `ErrorBody` `{status, error, message, timestamp}` via `GlobalExceptionHandler` (in `exception/`); use the existing exception types in `exception/http/` (`ConflictException`, `UnprocessableContentException`, `ForbiddenException`, `UnauthorizedException`, `NotFoundException`, `BadRequestException`, `GoneException`) rather than raw `ResponseEntity`s. Spring's missing-path-variable and missing-request-parameter exceptions map to 400 via dedicated handlers in `GlobalExceptionHandler`.
-- **Security:** JWT bearer auth (jjwt 0.12) in `security/` — `JwtTokenProvider` signs with the key from `app.jwt.secret` (base64, ≥256 bits) for `app.jwt.expiration-ms`; `JwtAuthenticationFilter` turns the `role` claim into `ROLE_*` authorities; `SecurityConfig` is stateless and permits `/auth/**` + health endpoints, everything else requires auth. Passwords: `Argon2PasswordEncoder` (needs BouncyCastle). `ResourcesAccessRules` handles owner / role checks inside services.
+- **Security:** JWT bearer auth (jjwt 0.12) in `security/` — `JwtTokenProvider` signs with the key from `app.jwt.secret` (base64, ≥256 bits) for `app.jwt.expiration-ms`; `JwtAuthenticationFilter` turns the `role` claim into `ROLE_*` authorities; `SecurityConfig` is stateless and permits `/auth/**` + `/ping`, everything else requires auth. Passwords: `Argon2PasswordEncoder` (needs BouncyCastle). Role checks live in `SecurityConfig` via `requestMatchers(...).hasRole("ADMIN")` (e.g. `POST /teachers`); owner / finer-grained checks go inside services.
 - **Style:** Lombok `@AllArgsConstructor` / `@Builder` / `@Data`; `lombok.addLombokGeneratedAnnotation = true`.
 - **Tests:** `@SpringBootTest(webEnvironment = RANDOM_PORT)` ITs extending `FacadeIT`; AWS beans get dummy values via `@DynamicPropertySource` (`EventConf` / `BucketConf` / `EmailConf` in `src/test/java/.../conf/`). Mock `EventProducer` in ITs that hit endpoints emitting events (real bean would call AWS).
 - **Spec-first:** when implementing a new domain, start from the OpenAPI path / schemas, the MCD, and (if needed) the `database conceptual data model` document. Keep `doc/api.yml` and the code in lockstep — update the spec first, then port the Java, then add ITs. The repo's own `mcd.canvas` is the authority for table shape (columns, uniques, enums).
@@ -134,6 +131,6 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 
 ## Git
 
-- Branches: `docs` (current work branch — last two commits are spec / MCD updates), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
-- History: Poja auto-commits (`poja: deployment ID: …`). Hand-written work follows short conventional commits (`feat:` / `docs:` / `build:` / `refactor:` / `chore:`), typically one per file; multi-file endpoint features may bundle in one `feat:` commit. The two `docs:` commits at the top of the log updated the spec and the MCD before any Java is written for the new domains.
+- Branches: `post-teachers` (current work branch — teacher provisioning), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
+- History: Poja auto-commits (`poja: deployment ID: …`). Hand-written work follows short conventional commits (`feat:` / `docs:` / `build:` / `refactor:` / `test:` / `chore:`), typically one per file; multi-file endpoint features may bundle in one `feat:` commit.
 - Don't commit, push, or rewrite history unless asked.

@@ -62,7 +62,7 @@ class LoginIT extends FacadeIT {
 
   @Test
   void valid_login_by_email_creates_token_and_sends_login_verification_email() {
-    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!", true);
+    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!");
 
     ResponseEntity<MessageBody> response =
         login(new LoginInput(null, "jane.doe@example.com", "StrongPass12!"));
@@ -82,7 +82,7 @@ class LoginIT extends FacadeIT {
 
   @Test
   void valid_login_by_username_creates_token_and_sends_login_verification_email() {
-    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!", true);
+    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!");
 
     ResponseEntity<MessageBody> response = login(new LoginInput("jane_doe", null, "StrongPass12!"));
 
@@ -99,7 +99,7 @@ class LoginIT extends FacadeIT {
 
   @Test
   void login_normalizes_email_to_lowercase() {
-    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!", true);
+    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!");
 
     ResponseEntity<MessageBody> response =
         login(new LoginInput(null, "Jane.Doe@Example.COM", "StrongPass12!"));
@@ -111,7 +111,7 @@ class LoginIT extends FacadeIT {
 
   @Test
   void wrong_password_is_unauthorized() {
-    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!", true);
+    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!");
 
     ResponseEntity<String> response =
         loginError(new LoginInput(null, "jane.doe@example.com", "WrongPass12!"));
@@ -139,19 +139,6 @@ class LoginIT extends FacadeIT {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     assertThat(response.getBody()).contains("Invalid credentials");
-    assertThat(redis.keys("verification:*")).isEmpty();
-    verify(eventProducer, never()).accept(any());
-  }
-
-  @Test
-  void unverified_account_is_forbidden() {
-    saveUser("jane_doe", "jane.doe@example.com", "StrongPass12!", false);
-
-    ResponseEntity<String> response =
-        loginError(new LoginInput(null, "jane.doe@example.com", "StrongPass12!"));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    assertThat(response.getBody()).contains("Account has not been verified");
     assertThat(redis.keys("verification:*")).isEmpty();
     verify(eventProducer, never()).accept(any());
   }
@@ -205,7 +192,7 @@ class LoginIT extends FacadeIT {
     assertThat(response.getBody()).contains("Request body is missing or malformed.");
   }
 
-  private JUser saveUser(String username, String email, String rawPassword, boolean verified) {
+  private JUser saveUser(String username, String email, String rawPassword) {
     return authRepository.save(
         JUser.builder()
             .username(username)
@@ -213,7 +200,6 @@ class LoginIT extends FacadeIT {
             .firstName("Jane")
             .lastName("Doe")
             .email(email)
-            .verified(verified)
             .role(UserRole.ADMIN)
             .build());
   }

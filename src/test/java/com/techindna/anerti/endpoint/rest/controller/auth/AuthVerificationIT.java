@@ -52,7 +52,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void valid_token_verifies_user_and_returns_jwt() {
-    JUser user = saveUser("jdoe", UserRole.ADMIN, false);
+    JUser user = saveUser("jdoe", UserRole.ADMIN);
     String token = UUID.randomUUID().toString();
     verificationCodeStore.saveToken(user.getEmail(), token);
 
@@ -68,7 +68,6 @@ class AuthVerificationIT extends FacadeIT {
     assertThat(response.getBody().user().username()).isEqualTo("jdoe");
     assertThat(response.getBody().user().role()).isEqualTo(UserRole.ADMIN);
 
-    assertThat(authRepository.findById(user.getId()).orElseThrow().getVerified()).isTrue();
     assertThat(verificationCodeStore.getEmailByToken(token)).isEmpty();
 
     Claims claims = jwtTokenProvider.validateToken(response.getBody().token());
@@ -77,21 +76,8 @@ class AuthVerificationIT extends FacadeIT {
   }
 
   @Test
-  void already_verified_user_still_gets_200() {
-    JUser user = saveUser("jdoe", UserRole.ADMIN, true);
-    String token = UUID.randomUUID().toString();
-    verificationCodeStore.saveToken(user.getEmail(), token);
-
-    ResponseEntity<VerifyRegistrationResponse> response = verify(UUID.fromString(token));
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-    assertThat(authRepository.findById(user.getId()).orElseThrow().getVerified()).isTrue();
-    assertThat(verificationCodeStore.getEmailByToken(token)).isEmpty();
-  }
-
-  @Test
   void unknown_token_is_unauthorized() {
-    saveUser("jdoe", UserRole.ADMIN, false);
+    saveUser("jdoe", UserRole.ADMIN);
     UUID unknownToken = UUID.randomUUID();
 
     assertThat(verificationCodeStore.getEmailByToken(unknownToken.toString())).isEmpty();
@@ -117,7 +103,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void used_token_is_unauthorized() {
-    JUser user = saveUser("jdoe", UserRole.ADMIN, false);
+    JUser user = saveUser("jdoe", UserRole.ADMIN);
     String token = UUID.randomUUID().toString();
     verificationCodeStore.saveToken(user.getEmail(), token);
 
@@ -131,7 +117,7 @@ class AuthVerificationIT extends FacadeIT {
 
   @Test
   void expired_token_is_unauthorized() throws InterruptedException {
-    JUser user = saveUser("jdoe", UserRole.ADMIN, false);
+    JUser user = saveUser("jdoe", UserRole.ADMIN);
     String token = UUID.randomUUID().toString();
     redis.opsForValue().set("verification:" + token, user.getEmail(), Duration.ofSeconds(1));
 
@@ -153,7 +139,7 @@ class AuthVerificationIT extends FacadeIT {
     assertThat(response.getBody()).contains("Invalid parameter: token");
   }
 
-  private JUser saveUser(String username, UserRole role, boolean verified) {
+  private JUser saveUser(String username, UserRole role) {
     return authRepository.save(
         JUser.builder()
             .username(username)
@@ -161,7 +147,6 @@ class AuthVerificationIT extends FacadeIT {
             .firstName("John")
             .lastName("Doe")
             .email(username + "@example.com")
-            .verified(verified)
             .role(role)
             .build());
   }

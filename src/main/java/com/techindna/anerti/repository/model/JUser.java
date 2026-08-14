@@ -42,10 +42,6 @@ public class JUser {
   @Column(nullable = false, unique = true, length = 100)
   private String email;
 
-  @Column(nullable = false)
-  @Builder.Default
-  private Boolean verified = false;
-
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   @Column(name = "role", nullable = false)
   private UserRole role;

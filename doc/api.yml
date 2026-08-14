@@ -62,41 +62,13 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /auth/resend-link:
-    post:
-      tags: [auth]
-      summary: Resend the email-verification link
-      description: Re-sends the verification email to an unverified account.
-      operationId: resendVerificationLink
-      parameters:
-        - name: email
-          in: query
-          required: true
-          schema:
-            type: string
-            format: email
-      responses:
-        '202':
-          description: Accepted — verification email re-sent
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageBody'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
   /auth/verification/{token}:
     get:
       tags: [auth]
       summary: Verify the email token and obtain a JWT
       description: |
-        Single-use token (15-minute TTL). Marks the user verified and returns a
-        JWT plus the user payload. Serves login verification.
+        Single-use token (15-minute TTL). Consumes the token and returns a JWT
+        plus the user payload. Serves login verification.
       operationId: verify
       parameters:
         - name: token
@@ -505,7 +477,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithTeacher'
+                $ref: '#/components/schemas/UserExtendTeacher'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -588,7 +560,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithTeacher'
+                $ref: '#/components/schemas/UserExtendTeacher'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -623,7 +595,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserWithTeacher'
+                $ref: '#/components/schemas/UserExtendTeacher'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1879,7 +1851,7 @@ components:
         ref: T001
         joinedAt: 2023-09-01T08:00:00Z
         teacherStatus: ACTIVE
-    UserWithTeacher:
+    UserExtendTeacher:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
@@ -2174,7 +2146,7 @@ components:
           type: string
           format: uuid
         teacher:
-          $ref: '#/components/schemas/UserWithTeacher'
+          $ref: '#/components/schemas/UserExtendTeacher'
         course:
           $ref: '#/components/schemas/Course'
         assignedAt:
@@ -2480,7 +2452,7 @@ components:
         data:
           type: array
           items:
-            $ref: '#/components/schemas/UserWithTeacher'
+            $ref: '#/components/schemas/UserExtendTeacher'
         meta:
           $ref: '#/components/schemas/Meta'
     StudentListResponse:

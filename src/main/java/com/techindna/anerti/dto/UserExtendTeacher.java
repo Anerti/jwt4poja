@@ -1,0 +1,16 @@
+package com.techindna.anerti.dto;
+
+import com.techindna.anerti.repository.enums.UserRole;
+import java.time.Instant;
+import java.util.UUID;
+
+public record UserExtendTeacher(
+    UUID id,
+    String username,
+    String firstName,
+    String lastName,
+    String email,
+    UserRole role,
+    Instant createdAt,
+    Instant updatedAt,
+    TeacherInheritance teacherInheritance) {}

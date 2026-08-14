@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS jwt4poja_app."user" (
     email                  VARCHAR(100) NOT NULL UNIQUE,
     teacher_inheritance_id UUID        REFERENCES jwt4poja_app.teacher_inheritance(id),
     student_inheritance_id UUID        REFERENCES jwt4poja_app.student_inheritance(id),
-    verified               BOOLEAN     NOT NULL DEFAULT false,
     role                   jwt4poja_app.user_role NOT NULL,
     created_at             TIMESTAMPTZ  NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ
