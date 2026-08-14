@@ -27,7 +27,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ### Conceptual data model (9 tables, all in schema `jwt4poja_app`)
 
-- `user` — shared identity (UUID pk, `username` / `email` unique, `password`, `firstName`, `lastName`, `role` enum, `verified`, `createdAt`, `updatedAt`).
+- `user` — shared identity (UUID pk, `username` / `email` unique, `password`, `firstName`, `lastName`, `role` enum, `createdAt`, `updatedAt`).
 - `teacher_extension` — 1-1 with `user` when `role = TEACHER` (`ref` unique, `teacherStatus` enum).
 - `student_extension` — 1-1 with `user` when `role = STUDENT` (`ref` unique, `learningPath` enum, `studentStatus` enum, `graduationYear`, `promotionName`).
 - `course` — catalog (`ref` unique, `title`, `type` enum, `credits`).
@@ -60,7 +60,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 - **Auth** — `endpoint/rest/controller/AuthController.java`:
   - `POST /auth/register` — 202 + verification email (kept for backward compat with the prior customer/admin iteration; the spec no longer advertises it).
   - `POST /auth/login` — 202 + login-verification link.
-  - `POST /auth/resend-link?email=` — 202; 403 unknown / already-verified email (`"No pending verification found for this email"`), 422 blank / invalid email, 400 missing param.
+  - `POST /auth/resend-link?email=` — 202; 403 unknown email (`"No pending verification found for this email"`), 422 blank / invalid email, 400 missing param.
   - `GET /auth/verification/{token}` — 200 JWT + user, 401 invalid token.
 - **Users** — `endpoint/rest/controller/UserController.java`:
   - `GET /users` — ADMIN-only; lists `CUSTOMER` users (legacy role), `search` substring on `username` / `firstName` / `lastName` / `email`, 1-based `page` / `size` (default 1 / 10, max 100), `sort` `ASC` | `DESC` on `createdAt`.
