@@ -62,34 +62,6 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /auth/resend-link:
-    post:
-      tags: [auth]
-      summary: Resend the email-verification link
-      description: Re-sends the email-verification link for an account.
-      operationId: resendVerificationLink
-      parameters:
-        - name: email
-          in: query
-          required: true
-          schema:
-            type: string
-            format: email
-      responses:
-        '202':
-          description: Accepted — verification email re-sent
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageBody'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
   /auth/verification/{token}:
     get:
       tags: [auth]
