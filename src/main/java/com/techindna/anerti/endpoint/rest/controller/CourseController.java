@@ -28,7 +28,8 @@ public class CourseController {
       @RequestParam(required = false) CourseType type,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size) {
-    return ResponseEntity.status(HttpStatus.OK).body(courseService.listCourses(search, type, page, size));
+    return ResponseEntity.status(HttpStatus.OK)
+        .body(courseService.listCourses(search, type, page, size));
   }
 
   @PostMapping
