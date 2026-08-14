@@ -5,13 +5,11 @@ import com.techindna.anerti.dto.MessageBody;
 import com.techindna.anerti.dto.VerifyRegistrationResponse;
 import com.techindna.anerti.endpoint.event.EventProducer;
 import com.techindna.anerti.endpoint.event.model.SendEmailRequested;
-import com.techindna.anerti.exception.http.ForbiddenException;
 import com.techindna.anerti.exception.http.UnauthorizedException;
 import com.techindna.anerti.mapper.UserMapper;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.jwt.JwtTokenProvider;
-import com.techindna.anerti.validator.DataValidator;
 import com.techindna.anerti.validator.UserValidator;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
@@ -38,7 +36,6 @@ public class AuthService {
   private final AuthRepository authRepository;
   private final UserMapper userMapper;
   private final UserValidator userValidator;
-  private final DataValidator dataValidator;
   private final PasswordEncoder passwordEncoder;
   private final VerificationCodeStore verificationCodeStore;
   private final TemplateEngine templateEngine;
@@ -72,29 +69,6 @@ public class AuthService {
         jUser.getUsername(),
         "Login Verification",
         "mail/login-verification",
-        servletRequest);
-
-    return new MessageBody("A verification link has been sent to your email");
-  }
-
-  @Transactional
-  public MessageBody resendVerificationLink(String email, HttpServletRequest servletRequest) {
-    dataValidator.validateEmail("email", email);
-
-    String normalizedEmail = email.strip().toLowerCase();
-    JUser jUser =
-        authRepository
-            .findByEmail(normalizedEmail)
-            .orElseThrow(
-                () -> new ForbiddenException("No pending verification found for this email"));
-
-    sendVerificationLink(
-        normalizedEmail,
-        jUser.getFirstName(),
-        jUser.getLastName(),
-        jUser.getUsername(),
-        "Email Verification",
-        "mail/verification",
         servletRequest);
 
     return new MessageBody("A verification link has been sent to your email");
