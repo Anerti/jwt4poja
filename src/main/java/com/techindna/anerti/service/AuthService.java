@@ -65,10 +65,6 @@ public class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (!jUser.getVerified()) {
-      throw new ForbiddenException("Account has not been verified");
-    }
-
     sendVerificationLink(
         jUser.getEmail(),
         jUser.getFirstName(),
@@ -91,10 +87,6 @@ public class AuthService {
             .findByEmail(normalizedEmail)
             .orElseThrow(
                 () -> new ForbiddenException("No pending verification found for this email"));
-
-    if (jUser.getVerified()) {
-      throw new ForbiddenException("No pending verification found for this email");
-    }
 
     sendVerificationLink(
         normalizedEmail,
@@ -120,11 +112,6 @@ public class AuthService {
         authRepository
             .findByEmail(email)
             .orElseThrow(() -> new UnauthorizedException("Invalid verification token"));
-
-    if (!jUser.getVerified()) {
-      jUser.setVerified(true);
-      authRepository.save(jUser);
-    }
 
     verificationCodeStore.deleteByToken(tokenStr);
 
