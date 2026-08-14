@@ -5,12 +5,14 @@ import com.techindna.anerti.dto.GroupListResponse;
 import com.techindna.anerti.dto.GroupOutput;
 import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.exception.http.ConflictException;
+import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.GroupMapper;
 import com.techindna.anerti.repository.GroupRepository;
 import com.techindna.anerti.repository.enums.CourseType;
 import com.techindna.anerti.repository.model.JGroup;
 import com.techindna.anerti.validator.DataValidator;
 import java.util.List;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -54,6 +56,13 @@ public class GroupService {
         throw new ConflictException("Cannot use ref %s".formatted(request.ref().strip()));
       }
       throw e;
+    }
+  }
+
+  @Transactional
+  public void deleteGroup(UUID groupId) {
+    if (groupRepository.delete(groupId) == 0) {
+      throw new NotFoundException("Group %s not found".formatted(groupId));
     }
   }
 }
