@@ -45,7 +45,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 - **exams** — `POST/GET /exams`, `GET/PATCH/DELETE /exams/{examId}` (ADMIN + TEACHER; TEACHER scoped to assigned courses).
 - **teachers** — `POST/GET /teachers`, `GET/PATCH /teachers/{teacherId}` (ADMIN).
 - **students** — `POST/GET /students`, `GET/PATCH /students/{studentId}` (ADMIN manages; TEACHER + owner read).
-- **classes** — `POST/GET /classes`, `GET/PATCH/DELETE /classes/{classId}` (ADMIN manages, TEACHER reads).
+- **groups** — `POST/GET /groups`, `GET/DELETE /groups/{groupId}` (ADMIN manages, TEACHER reads).
 - **assignments** — `POST/GET /teacher-courses`, `DELETE /teacher-courses/{teacherCourseId}` (ADMIN).
 - **enrollments** — `POST/GET /student-classes`, `PATCH /student-classes/{studentClassId}` (ADMIN).
 - **grades** — `POST /grades`, `GET /grades/{studentId}`, `PATCH /grades/{gradeId}`, `GET /grades/{gradeId}/history` (ADMIN + TEACHER; STUDENT own).
@@ -53,7 +53,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ## Current state
 
-**Auth + teacher provisioning, course management and student provisioning are implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`), `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`), and `student_inheritance` (entity `JStudentInheritance`, DTOs `UserExtendStudent` / `StudentInheritance` / `CreateStudentInput`, and `POST /students`). `exam`, `grade`, `history`, etc. have no Java at all.
+**Auth + teacher provisioning, course management, group management and student provisioning are implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`), `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`), `group` (entity `JGroup` / `Group`, DTOs `GroupOutput` / `CreateGroupInput` / `GroupListResponse`, `POST /groups` + `GET /groups` + `DELETE /groups/{groupId}`), and `student_inheritance` (entity `JStudentInheritance`, DTOs `UserExtendStudent` / `StudentInheritance` / `CreateStudentInput`, and `POST /students`). `exam`, `grade`, `history`, etc. have no Java at all.
 
 ### Implemented endpoints (hand-written, no `@PojaGenerated`)
 
@@ -67,19 +67,23 @@ There is **no public registration**: an `ADMIN` provisions every account through
   - `GET /courses` — 200 `CourseListResponse` (public); `search` substring on `ref`/`title`, exact `type` filter, `page`/`size` pagination.
 - **Students** — `endpoint/rest/controller/StudentController.java`:
   - `POST /students` — 201 `UserExtendStudent` (ADMIN-only); provisions a `user` row plus its `student_inheritance` (`level` / `learningPath` required, `studentStatus` defaults `ACTIVE`), validates input, maps unique violations to 409.
+- **Groups** — `endpoint/rest/controller/GroupController.java`:
+  - `POST /groups` — 201 `GroupOutput` (ADMIN-only); validates input, maps unique `ref` violations to 409.
+  - `GET /groups` — 200 `GroupListResponse` (ADMIN + TEACHER); `search` substring on `ref`, exact `type` filter, `page`/`size` pagination.
+  - `DELETE /groups/{groupId}` — 204 (ADMIN-only); 404 unknown id. Enrollments reference it via `ON DELETE CASCADE`, so no 409 guard is needed.
 - **Health (POJA scaffold)** — `GET /ping`, `GET /health/email`, `GET /health/bucket`.
 
 ### Hand-written layer (all ported, none carry `@PojaGenerated`)
 
-- `endpoint/rest/controller/{AuthController, TeacherController, CourseController, StudentController}`.
-- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/StudentService`, `service/VerificationCodeStore` (Redis 15-min tokens).
+- `endpoint/rest/controller/{AuthController, TeacherController, CourseController, StudentController, GroupController}`.
+- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/StudentService`, `service/GroupService`, `service/VerificationCodeStore` (Redis 15-min tokens).
 - `security/` — `SecurityConfig` (stateless; role enforcement via `requestMatchers(...).hasRole("ADMIN")`), `security/jwt/{JwtTokenProvider, JwtAuthenticationFilter}`.
-- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, StudentInheritanceRepository, CourseRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse}`.
-- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`), `mapper/StudentInheritanceMapper` (`CreateStudentInput` → `JStudentInheritance`, `JUser` → `UserExtendStudent`), `mapper/CourseMapper` (`CreateCourseInput` → `JCourse`, `JCourse` → `CourseOutput`).
+- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, StudentInheritanceRepository, CourseRepository, GroupRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse, JGroup}`.
+- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`), `mapper/StudentInheritanceMapper` (`CreateStudentInput` → `JStudentInheritance`, `JUser` → `UserExtendStudent`), `mapper/CourseMapper` (`CreateCourseInput` → `JCourse`, `JCourse` → `CourseOutput`), `mapper/GroupMapper` (`CreateGroupInput` → `JGroup`, `JGroup` → `GroupOutput`).
 - `validator/DataValidator`, `validator/UserValidator`, `validator/CourseValidator`.
 - `exception/ErrorBody`, `exception/GlobalExceptionHandler`, `exception/http/*` (BadRequest / Conflict / Forbidden / Gone / NotFound / Unauthorized / UnprocessableContent).
-- `entity/User` (domain record) and `repository/enums/{UserRole, TeacherStatus, StudentStatus, Level, LearningPath}`. `UserRole` already matches the spec triple `ADMIN` / `TEACHER` / `STUDENT` (no legacy `CUSTOMER`).
-- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`, `CreateStudentInput`, `StudentInheritance`, `UserExtendStudent`.
+- `entity/User`, `entity/Group` (domain records) and `repository/enums/{UserRole, TeacherStatus, StudentStatus, Level, LearningPath, CourseType}`. `UserRole` already matches the spec triple `ADMIN` / `TEACHER` / `STUDENT` (no legacy `CUSTOMER`).
+- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`, `CreateStudentInput`, `StudentInheritance`, `UserExtendStudent`, `CreateGroupInput`, `GroupOutput`, `GroupListResponse`.
 - `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService` (auth email pipeline).
 - Mail template `resources/templates/mail/login-verification.html`.
 
@@ -87,7 +91,8 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 - `src/main/resources/db/migration/V1__init.sql` — schema `jwt4poja_app` with the spec role triple `(ADMIN, TEACHER, STUDENT)` and the `teacher_inheritance` / `student_inheritance` / `user` tables. Applied manually, not via Flyway. Still ahead of the code: `exam` / `grade` / `history` etc. exist only in `doc/mcd.canvas`, not in the DDL.
 - `src/main/resources/db/migration/V2__add_course.sql` — the `course` table (`ref` unique, `title`, `type` enum, `credits`) + its `course_type` enum.
-- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50. `test-course-init.sql` mirrors V2 for the Testcontainers test DB.
+- `src/main/resources/db/migration/V3__add_group.sql` — the `"group"` table (`ref` unique, `type` enum) + its `group_type` enum.
+- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50. `test-course-init.sql` mirrors V2 and `test-group-init.sql` mirrors V3 for the Testcontainers test DB.
 
 ### Integration tests
 
@@ -96,13 +101,14 @@ There is **no public registration**: an `ADMIN` provisions every account through
 - `auth/LoginIT`, `auth/AuthVerificationIT`.
 - `teachers/PostTeachersIT`, `teachers/GetTeachersIT`.
 - `courses/PostCoursesIT`, `courses/GetCoursesIT`.
-- `students/PostStudentsIT`.
+- `students/PostStudentsIT`, `students/GetStudentsIT`.
+- `groups/PostGroupsIT`, `groups/GetGroupsIT`, `groups/DeleteGroupsIT`.
 
-No ITs yet for exams / classes / assignments / enrollments / grades / reports, nor for `GET/PATCH /teachers/{teacherId}`, `GET /students` / `PATCH /students/{studentId}`, or `GET/PATCH /courses/{courseId}`.
+No ITs yet for exams / assignments / enrollments / grades / reports, nor for `GET/PATCH /teachers/{teacherId}`, `GET /students` / `PATCH /students/{studentId}`, `GET/PATCH /courses/{courseId}`, or `GET/PATCH /groups/{groupId}`.
 
 ### Out of scope right now (spec only, no Java)
 
-Everything under `/exams`, `/classes`, `/teacher-courses`, `/student-classes`, `/grades`, `/grade-reports`, `/graduations`, plus `GET /students` / `PATCH /students/{studentId}`, `GET/PATCH /teachers/{teacherId}` and the remaining course paths (`GET/PATCH /courses/{courseId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
+Everything under `/exams`, `/teacher-courses`, `/student-classes`, `/grades`, `/grade-reports`, `/graduations`, plus `GET /students` / `PATCH /students/{studentId}`, `GET/PATCH /teachers/{teacherId}`, the remaining course paths (`GET/PATCH /courses/{courseId}`) and the remaining group paths (`GET/PATCH /groups/{groupId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
 
 ## Commands
 
