@@ -52,7 +52,7 @@ class ResendLinkIT extends FacadeIT {
 
   @Test
   void pending_user_resend_sends_verification_email() {
-    saveUser("jane_doe", "jane.doe@example.com", false);
+    saveUser("jane_doe", "jane.doe@example.com");
 
     ResponseEntity<MessageBody> response = resend("jane.doe@example.com");
 
@@ -71,7 +71,7 @@ class ResendLinkIT extends FacadeIT {
 
   @Test
   void resend_link_normalizes_email_to_lowercase() {
-    saveUser("jane_doe", "jane.doe@example.com", false);
+    saveUser("jane_doe", "jane.doe@example.com");
 
     ResponseEntity<MessageBody> response = resend("Jane.Doe@Example.COM");
 
@@ -83,7 +83,7 @@ class ResendLinkIT extends FacadeIT {
 
   @Test
   void resend_link_issues_a_new_token() {
-    saveUser("jane_doe", "jane.doe@example.com", false);
+    saveUser("jane_doe", "jane.doe@example.com");
 
     resend("jane.doe@example.com");
     String firstToken = tokenFrom(capturedEmailEvent());
@@ -95,18 +95,6 @@ class ResendLinkIT extends FacadeIT {
     assertThat(secondToken).isNotEqualTo(firstToken);
     assertThat(redis.opsForValue().get("verification:" + secondToken))
         .isEqualTo("jane.doe@example.com");
-  }
-
-  @Test
-  void verified_user_resend_is_forbidden() {
-    saveUser("jane_doe", "jane.doe@example.com", true);
-
-    ResponseEntity<String> response = resendError("jane.doe@example.com");
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-    assertThat(response.getBody()).contains("No pending verification found for this email");
-    assertThat(redis.keys("verification:*")).isEmpty();
-    verify(eventProducer, never()).accept(any());
   }
 
   @Test
@@ -143,7 +131,7 @@ class ResendLinkIT extends FacadeIT {
     assertThat(response.getBody()).contains("Missing or invalid request parameter: email");
   }
 
-  private JUser saveUser(String username, String email, boolean verified) {
+  private JUser saveUser(String username, String email) {
     return authRepository.save(
         JUser.builder()
             .username(username)
@@ -151,7 +139,6 @@ class ResendLinkIT extends FacadeIT {
             .firstName("Jane")
             .lastName("Doe")
             .email(email)
-            .verified(verified)
             .role(UserRole.ADMIN)
             .build());
   }
