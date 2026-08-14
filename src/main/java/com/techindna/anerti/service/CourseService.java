@@ -37,10 +37,7 @@ public class CourseService {
     Pageable pageable = PageRequest.of(validPage - 1, validSize, Sort.by("createdAt", "ref"));
 
     Page<JCourse> jCourses =
-        courseRepository.search(
-            (search == null || search.isBlank()) ? null : search,
-            type == null ? null : type.name(),
-            pageable);
+        courseRepository.search(search, type == null ? null : type.name(), pageable);
 
     List<CourseOutput> courses =
         jCourses.getContent().stream()

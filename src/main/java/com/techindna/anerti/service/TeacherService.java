@@ -51,7 +51,7 @@ public class TeacherService {
 
     Page<JUser> jUsers =
         userRepository.searchTeachers(
-            (search == null || search.isBlank()) ? null : search,
+            search,
             teacherStatus == null ? null : teacherStatus.name(),
             UserRole.TEACHER,
             pageable);

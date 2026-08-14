@@ -61,10 +61,10 @@ public class StudentService {
 
     Page<JUser> jUsers =
         userRepository.searchStudents(
-            (search == null || search.isBlank()) ? null : search,
+            search,
             learningPath == null ? null : learningPath.name(),
             studentStatus == null ? null : studentStatus.name(),
-            (className == null || className.isBlank()) ? null : className,
+            className,
             UserRole.STUDENT,
             pageable);
 

@@ -44,7 +44,7 @@ public interface UserRepository extends JpaRepository<JUser, UUID> {
             OR CAST(si.learningPath AS string) = :learningPath)
           AND (CAST(:studentStatus AS string) IS NULL
             OR CAST(si.studentStatus AS string) = :studentStatus)
-          AND (:className IS NULL OR si.className = :className)
+          AND (:className IS NULL OR :className = '' OR si.className = :className)
       """)
   Page<JUser> searchStudents(
       @Param("search") String search,
