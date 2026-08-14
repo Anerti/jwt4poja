@@ -1076,13 +1076,13 @@ paths:
   /student-groups:
     post:
       tags: [enrollments]
-      summary: Enroll a student in a group (ADMIN)
+      summary: Bulk enroll students in groups (ADMIN)
       description: |
-        Enrolls a student in a group starting at `joinedAt`. Grades follow the
-        student, not the group — a student can change group mid-semester by
-        closing the previous enrollment (`leftAt`) and opening a new one. A
-        given (student, group) pair is unique.
-      operationId: enrollStudent
+        Enrolls a list of students in groups starting at `joinedAt`, all in one
+        request. Grades follow the student, not the group — a student can change
+        group mid-semester by closing the previous enrollment (`leftAt`) and
+        opening a new one. A given (student, group) pair is unique.
+      operationId: enrollStudents
       security:
         - bearerAuth: []
       requestBody:
@@ -1090,14 +1090,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateStudentGroupInput'
+              $ref: '#/components/schemas/CreateStudentGroupRequest'
       responses:
         '201':
-          description: Enrollment created
+          description: Enrollments created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StudentGroup'
+                $ref: '#/components/schemas/CreateStudentGroupListResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2243,6 +2243,36 @@ components:
           createdAt: 2023-09-01T08:00:00Z
         joinedAt: 2023-09-04T09:00:00Z
         leftAt: null
+    CreateStudentGroupRequest:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateStudentGroupInput'
+    CreateStudentGroupOutput:
+      type: object
+      required: [studentId, groupId, joinedAt]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        joinedAt:
+          type: string
+          format: date-time
+        leftAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        joinedAt: 2023-09-04T09:00:00Z
+        leftAt: null
     CreateStudentGroupInput:
       type: object
       required: [studentId, groupId, joinedAt]
@@ -2497,6 +2527,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StudentGroup'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    CreateStudentGroupListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateStudentGroupOutput'
         meta:
           $ref: '#/components/schemas/Meta'
     GradeListResponse:
