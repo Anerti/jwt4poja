@@ -66,7 +66,7 @@ paths:
     post:
       tags: [auth]
       summary: Resend the email-verification link
-      description: Re-sends the verification email to an unverified account.
+      description: Re-sends the email-verification link for an account.
       operationId: resendVerificationLink
       parameters:
         - name: email
@@ -95,8 +95,8 @@ paths:
       tags: [auth]
       summary: Verify the email token and obtain a JWT
       description: |
-        Single-use token (15-minute TTL). Marks the user verified and returns a
-        JWT plus the user payload. Serves login verification.
+        Single-use token (15-minute TTL). Consumes the token and returns a JWT
+        plus the user payload. Serves login verification.
       operationId: verify
       parameters:
         - name: token
