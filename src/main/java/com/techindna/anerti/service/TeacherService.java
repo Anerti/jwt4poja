@@ -12,13 +12,12 @@ import com.techindna.anerti.repository.enums.TeacherStatus;
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JTeacherInheritance;
 import com.techindna.anerti.repository.model.JUser;
+import com.techindna.anerti.validator.DataValidator;
 import com.techindna.anerti.validator.UserValidator;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -31,6 +30,7 @@ public class TeacherService {
   private final UserRepository userRepository;
   private final TeacherInheritanceRepository teacherInheritanceRepository;
   private final UserValidator userValidator;
+  private final DataValidator dataValidator;
   private final UserMapper userMapper;
   private final TeacherInheritanceMapper teacherInheritanceMapper;
   private final UserConflictHandler userConflictHandler;
@@ -39,27 +39,23 @@ public class TeacherService {
   @Transactional(readOnly = true)
   public TeacherListResponse listTeachers(
       String search, TeacherStatus teacherStatus, int page, int size) {
-    userValidator.validateListFilters(search);
+    if (search != null && !search.isBlank()) {
+      dataValidator.validateSearchString(search);
+    }
 
-    int validPage = defaultIfInvalid(page, 1, 100, 1);
-    int validSize = defaultIfInvalid(size, 1, 100, 10);
-    Pageable pageable = PageRequest.of(validPage - 1, validSize, Sort.by("createdAt", "username"));
+    PageRequestData p = PageRequestData.of(page, size, Sort.by("createdAt", "username"));
 
     Page<JUser> jUsers =
         userRepository.searchTeachers(
-            (search == null || search.isBlank()) ? null : search,
+            search,
             teacherStatus == null ? null : teacherStatus.name(),
             UserRole.TEACHER,
-            pageable);
+            p.pageable());
 
     List<UserExtendTeacher> teachers =
         jUsers.getContent().stream().map(teacherInheritanceMapper::toDto).toList();
     return new TeacherListResponse(
-        teachers, new Meta(validPage, validSize, jUsers.getTotalElements()));
-  }
-
-  private int defaultIfInvalid(int value, int min, int max, int defaultValue) {
-    return (value < min || value > max) ? defaultValue : value;
+        teachers, new Meta(p.page(), p.size(), jUsers.getTotalElements()));
   }
 
   @Transactional

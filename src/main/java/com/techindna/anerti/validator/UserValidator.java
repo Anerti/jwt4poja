@@ -58,12 +58,6 @@ public class UserValidator {
     dataValidator.validateRef(ref);
   }
 
-  public void validateListFilters(String search) {
-    if (search != null && !search.isBlank()) {
-      dataValidator.validateSearchString(search);
-    }
-  }
-
   public void validateLogin(LoginInput request) {
     if (request.email() != null && !request.email().isBlank()) {
       dataValidator.validateEmail("email", request.email());

@@ -14,8 +14,6 @@ import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,15 +30,10 @@ public class CourseService {
   public CourseListResponse listCourses(String search, CourseType type, int page, int size) {
     courseValidator.validateListFilters(search);
 
-    int validPage = defaultIfInvalid(page, 1, 100, 1);
-    int validSize = defaultIfInvalid(size, 1, 100, 10);
-    Pageable pageable = PageRequest.of(validPage - 1, validSize, Sort.by("createdAt", "ref"));
+    PageRequestData p = PageRequestData.of(page, size, Sort.by("createdAt", "ref"));
 
     Page<JCourse> jCourses =
-        courseRepository.search(
-            (search == null || search.isBlank()) ? null : search,
-            type == null ? null : type.name(),
-            pageable);
+        courseRepository.search(search, type == null ? null : type.name(), p.pageable());
 
     List<CourseOutput> courses =
         jCourses.getContent().stream()
@@ -48,11 +41,7 @@ public class CourseService {
             .map(courseMapper::toDto)
             .toList();
     return new CourseListResponse(
-        courses, new Meta(validPage, validSize, jCourses.getTotalElements()));
-  }
-
-  private int defaultIfInvalid(int value, int min, int max, int defaultValue) {
-    return (value < min || value > max) ? defaultValue : value;
+        courses, new Meta(p.page(), p.size(), jCourses.getTotalElements()));
   }
 
   @Transactional
