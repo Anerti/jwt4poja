@@ -40,7 +40,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ### API surface (per tag, from the spec)
 
-- **auth** — `POST /auth/login`, `POST /auth/resend-link`, `GET /auth/verification/{token}` (no public register).
+- **auth** — `POST /auth/login`, `GET /auth/verification/{token}` (no public register).
 - **courses** — `POST/GET /courses`, `GET/PATCH /courses/{courseId}` (ADMIN manages, TEACHER reads).
 - **exams** — `POST/GET /exams`, `GET/PATCH/DELETE /exams/{examId}` (ADMIN + TEACHER; TEACHER scoped to assigned courses).
 - **teachers** — `POST/GET /teachers`, `GET/PATCH /teachers/{teacherId}` (ADMIN).
@@ -60,7 +60,6 @@ There is **no public registration**: an `ADMIN` provisions every account through
 - **Auth** — `endpoint/rest/controller/AuthController.java`:
   - `POST /auth/register` — 202 + verification email (kept for backward compat with the prior customer/admin iteration; the spec no longer advertises it).
   - `POST /auth/login` — 202 + login-verification link.
-  - `POST /auth/resend-link?email=` — 202; 403 unknown email (`"No pending verification found for this email"`), 422 blank / invalid email, 400 missing param.
   - `GET /auth/verification/{token}` — 200 JWT + user, 401 invalid token.
 - **Users** — `endpoint/rest/controller/UserController.java`:
   - `GET /users` — ADMIN-only; lists `CUSTOMER` users (legacy role), `search` substring on `username` / `firstName` / `lastName` / `email`, 1-based `page` / `size` (default 1 / 10, max 100), `sort` `ASC` | `DESC` on `createdAt`.
@@ -90,7 +89,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 `src/test/java/com/techindna/anerti/endpoint/rest/controller/`:
 
-- `auth/RegisterIT`, `auth/LoginIT`, `auth/ResendLinkIT`, `auth/AuthVerificationIT`.
+- `auth/LoginIT`, `auth/AuthVerificationIT`.
 - `users/UserListIT`, `users/UserGetIT`.
 
 No ITs yet for courses / exams / teachers / students / classes / assignments / enrollments / grades / reports.
