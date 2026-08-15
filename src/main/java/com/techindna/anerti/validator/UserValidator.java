@@ -1,9 +1,12 @@
 package com.techindna.anerti.validator;
 
 import com.techindna.anerti.dto.CreateStudentInput;
+import com.techindna.anerti.dto.CreateStudentRequest;
 import com.techindna.anerti.dto.CreateTeacherInput;
 import com.techindna.anerti.dto.LoginInput;
+import com.techindna.anerti.exception.http.BadRequestException;
 import com.techindna.anerti.exception.http.UnprocessableContentException;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +26,17 @@ public class UserValidator {
         request.ref());
   }
 
+  public void validateCreateStudents(CreateStudentRequest request) {
+    List<CreateStudentInput> data = request.data();
+    if (data == null || data.isEmpty()) {
+      throw new BadRequestException("data must contain at least one student");
+    }
+    if (data.size() > 10) {
+      throw new UnprocessableContentException("data must not contain more than 10 students");
+    }
+    data.forEach(this::validateCreateStudent);
+  }
+
   public void validateCreateStudent(CreateStudentInput request) {
     validateUserAccount(
         request.username(),
@@ -39,8 +53,6 @@ public class UserValidator {
     if (request.learningPath() == null) {
       throw new UnprocessableContentException("learningPath is required and cannot be blank");
     }
-
-    dataValidator.checkStringLength("className", request.className(), 30);
   }
 
   private void validateUserAccount(
