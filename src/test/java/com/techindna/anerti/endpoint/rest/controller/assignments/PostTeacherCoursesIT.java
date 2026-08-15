@@ -86,7 +86,7 @@ class PostTeacherCoursesIT extends FacadeIT {
     assertThat(body.assignedAt()).isEqualTo(assignedAt);
 
     JTeacherCourse saved = teacherCourseRepository.findAll().getFirst();
-    assertThat(saved.getTeacherInheritanceId()).isEqualTo(teacher.getId());
+    assertThat(saved.getTeacherInheritance().getId()).isEqualTo(teacher.getId());
     assertThat(saved.getCourseId()).isEqualTo(course.getId());
     assertThat(saved.getAssignedAt()).isEqualTo(assignedAt);
   }
@@ -161,7 +161,7 @@ class PostTeacherCoursesIT extends FacadeIT {
     JCourse course = saveCourse();
     teacherCourseRepository.save(
         JTeacherCourse.builder()
-            .teacherInheritanceId(teacher.getId())
+            .teacherInheritance(teacher)
             .courseId(course.getId())
             .assignedAt(Instant.parse("2023-09-01T08:00:00Z"))
             .build());

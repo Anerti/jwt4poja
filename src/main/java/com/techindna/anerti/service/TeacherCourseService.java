@@ -6,6 +6,7 @@ import com.techindna.anerti.exception.http.ConflictException;
 import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.TeacherCourseMapper;
 import com.techindna.anerti.repository.TeacherCourseRepository;
+import com.techindna.anerti.repository.TeacherInheritanceRepository;
 import com.techindna.anerti.repository.model.JTeacherCourse;
 import com.techindna.anerti.validator.TeacherCourseValidator;
 import lombok.AllArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TeacherCourseService {
 
   private final TeacherCourseRepository teacherCourseRepository;
+  private final TeacherInheritanceRepository teacherInheritanceRepository;
   private final TeacherCourseValidator teacherCourseValidator;
   private final TeacherCourseMapper teacherCourseMapper;
 
@@ -27,7 +29,9 @@ public class TeacherCourseService {
 
     try {
       JTeacherCourse saved =
-          teacherCourseRepository.saveAndFlush(teacherCourseMapper.toRepository(request));
+          teacherCourseRepository.saveAndFlush(
+              teacherCourseMapper.toRepository(
+                  request, teacherInheritanceRepository.getReferenceById(request.teacherId())));
       return teacherCourseMapper.toDto(saved);
     } catch (DataIntegrityViolationException e) {
       String message = e.getMostSpecificCause().getMessage();
