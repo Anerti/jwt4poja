@@ -96,6 +96,21 @@ public class DataValidator {
     }
   }
 
+  public void validateUserAccount(
+      String username,
+      String password,
+      String firstName,
+      String lastName,
+      String email,
+      String ref) {
+    validateUsername(username);
+    checkPasswordSecurityLevel(password);
+    validateName("firstName", firstName);
+    validateName("lastName", lastName);
+    validateEmail("email", email);
+    validateRef(ref);
+  }
+
   public void checkPasswordSecurityLevel(String password) {
     checkNullData("password", password);
 
