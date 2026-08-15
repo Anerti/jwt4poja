@@ -4,6 +4,7 @@ import com.techindna.anerti.dto.CreateStudentInput;
 import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.dto.StudentListResponse;
 import com.techindna.anerti.dto.UserExtendStudent;
+import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.StudentInheritanceMapper;
 import com.techindna.anerti.mapper.UserMapper;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
@@ -83,6 +84,10 @@ public class StudentService {
               userMapper.toRepository(
                   request, passwordEncoder.encode(request.password()), inheritance)));
     } catch (DataIntegrityViolationException e) {
+      String message = e.getMostSpecificCause().getMessage();
+      if (message.contains("group_id")) {
+        throw new NotFoundException("Group %s not found".formatted(request.groupId()));
+      }
       userConflictHandler.conflictFrom(e, request.username(), request.email(), request.ref());
       throw e;
     }

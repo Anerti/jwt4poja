@@ -6,14 +6,17 @@ import com.techindna.anerti.conf.FacadeIT;
 import com.techindna.anerti.dto.StudentListResponse;
 import com.techindna.anerti.dto.UserExtendStudent;
 import com.techindna.anerti.repository.AuthRepository;
+import com.techindna.anerti.repository.ClassRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.enums.LearningPath;
 import com.techindna.anerti.repository.enums.Level;
 import com.techindna.anerti.repository.enums.StudentStatus;
 import com.techindna.anerti.repository.enums.UserRole;
+import com.techindna.anerti.repository.model.JClass;
 import com.techindna.anerti.repository.model.JStudentInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.jwt.JwtTokenProvider;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -34,6 +37,7 @@ class GetStudentsIT extends FacadeIT {
   private final TestRestTemplate restTemplate;
   private final AuthRepository authRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
+  private final ClassRepository classRepository;
   private final JwtTokenProvider jwtTokenProvider;
   private final PasswordEncoder passwordEncoder;
 
@@ -41,11 +45,13 @@ class GetStudentsIT extends FacadeIT {
       TestRestTemplate restTemplate,
       AuthRepository authRepository,
       StudentInheritanceRepository studentInheritanceRepository,
+      ClassRepository classRepository,
       JwtTokenProvider jwtTokenProvider,
       PasswordEncoder passwordEncoder) {
     this.restTemplate = restTemplate;
     this.authRepository = authRepository;
     this.studentInheritanceRepository = studentInheritanceRepository;
+    this.classRepository = classRepository;
     this.jwtTokenProvider = jwtTokenProvider;
     this.passwordEncoder = passwordEncoder;
     restTemplate.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
@@ -55,6 +61,7 @@ class GetStudentsIT extends FacadeIT {
   void clean() {
     authRepository.deleteAll();
     studentInheritanceRepository.deleteAll();
+    classRepository.deleteAll();
   }
 
   @Test
@@ -512,6 +519,7 @@ class GetStudentsIT extends FacadeIT {
       LearningPath learningPath,
       StudentStatus status,
       String className) {
+    UUID classId = classIdFor(className);
     JStudentInheritance inheritance =
         studentInheritanceRepository.save(
             JStudentInheritance.builder()
@@ -519,7 +527,7 @@ class GetStudentsIT extends FacadeIT {
                 .level(level)
                 .learningPath(learningPath)
                 .studentStatus(status)
-                .className(className)
+                .classId(classId)
                 .build());
     return authRepository.save(
         JUser.builder()
@@ -531,6 +539,17 @@ class GetStudentsIT extends FacadeIT {
             .role(UserRole.STUDENT)
             .studentInheritance(inheritance)
             .build());
+  }
+
+  private UUID classIdFor(String className) {
+    if (className == null) {
+      return null;
+    }
+    return classRepository
+        .findByName(className)
+        .orElseGet(
+            () -> classRepository.save(JClass.builder().name(className).yearOf(2023).build()))
+        .getId();
   }
 
   private JUser saveUser(String username, String firstName, String lastName, UserRole role) {

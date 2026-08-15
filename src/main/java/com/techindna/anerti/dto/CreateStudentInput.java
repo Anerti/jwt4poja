@@ -3,6 +3,7 @@ package com.techindna.anerti.dto;
 import com.techindna.anerti.repository.enums.LearningPath;
 import com.techindna.anerti.repository.enums.Level;
 import java.time.Instant;
+import java.util.UUID;
 
 public record CreateStudentInput(
     String username,
@@ -14,4 +15,5 @@ public record CreateStudentInput(
     Instant joinedAt,
     Level level,
     LearningPath learningPath,
-    String className) {}
+    UUID groupId,
+    UUID classId) {}

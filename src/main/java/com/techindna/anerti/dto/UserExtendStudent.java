@@ -13,4 +13,6 @@ public record UserExtendStudent(
     UserRole role,
     Instant createdAt,
     Instant updatedAt,
-    StudentInheritance studentInheritance) {}
+    StudentInheritance studentInheritance,
+    UUID groupId,
+    UUID classId) {}

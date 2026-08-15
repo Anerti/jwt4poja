@@ -16,7 +16,8 @@ public class StudentInheritanceMapper {
         .joinedAt(request.joinedAt())
         .level(request.level())
         .learningPath(request.learningPath())
-        .className(request.className())
+        .groupId(request.groupId())
+        .classId(request.classId())
         .build();
   }
 
@@ -37,8 +38,8 @@ public class StudentInheritanceMapper {
             inheritance.getJoinedAt(),
             inheritance.getLevel(),
             inheritance.getLearningPath(),
-            inheritance.getStudentStatus(),
-            inheritance.getGraduationYear(),
-            inheritance.getClassName()));
+            inheritance.getStudentStatus()),
+        inheritance.getGroupId(),
+        inheritance.getClassId());
   }
 }

@@ -8,7 +8,11 @@ public class EnvConf {
 
   static final PostgreSQLContainer POSTGRES =
       new PostgreSQLContainer("postgres:16-alpine")
-          .withInitScripts("test-init.sql", "test-course-init.sql", "test-group-init.sql");
+          .withInitScripts(
+              "test-init.sql",
+              "test-course-init.sql",
+              "test-group-init.sql",
+              "test-class-init.sql");
   static final GenericContainer<?> REDIS =
       new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 

@@ -39,8 +39,6 @@ public class UserValidator {
     if (request.learningPath() == null) {
       throw new UnprocessableContentException("learningPath is required and cannot be blank");
     }
-
-    dataValidator.checkStringLength("className", request.className(), 30);
   }
 
   private void validateUserAccount(

@@ -12,6 +12,4 @@ public record StudentInheritance(
     Instant joinedAt,
     Level level,
     LearningPath learningPath,
-    StudentStatus studentStatus,
-    Integer graduationYear,
-    String className) {}
+    StudentStatus studentStatus) {}
