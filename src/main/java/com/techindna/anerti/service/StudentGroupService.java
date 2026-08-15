@@ -35,6 +35,7 @@ public class StudentGroupService {
 
     List<CreateStudentGroupOutput> outputs =
         request.data().stream().map(this::createEnrollment).toList();
+
     return new CreateStudentGroupListResponse(outputs, new Meta(1, outputs.size(), outputs.size()));
   }
 
