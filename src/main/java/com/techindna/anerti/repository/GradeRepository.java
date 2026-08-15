@@ -14,9 +14,9 @@ public interface GradeRepository extends JpaRepository<JGrade, UUID> {
 
   @Query(
       """
-      SELECT g FROM JGrade g, JExam e
-      WHERE e.id = g.examId
-        AND g.studentInheritance.id = :studentId
+      SELECT g FROM JGrade g
+      JOIN JExam e ON e.id = g.examId
+      WHERE g.studentInheritance.id = :studentId
         AND (:examId IS NULL OR g.examId = :examId)
         AND (:academicYear IS NULL OR e.academicYear = :academicYear)
         AND (:teacherId IS NULL OR EXISTS (
