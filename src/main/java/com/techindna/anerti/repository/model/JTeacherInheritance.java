@@ -6,8 +6,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,4 +43,8 @@ public class JTeacherInheritance {
   @Column(name = "teacher_status", nullable = false)
   @Builder.Default
   private TeacherStatus teacherStatus = TeacherStatus.ACTIVE;
+
+  @OneToMany(mappedBy = "teacherInheritance")
+  @Builder.Default
+  private List<JTeacherCourse> teacherCourses = new ArrayList<>();
 }
