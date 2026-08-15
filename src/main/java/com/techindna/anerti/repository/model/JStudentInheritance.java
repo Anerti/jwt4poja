@@ -52,9 +52,9 @@ public class JStudentInheritance {
   @Builder.Default
   private StudentStatus studentStatus = StudentStatus.ACTIVE;
 
-  @Column(name = "graduation_year")
-  private Integer graduationYear;
+  @Column(name = "group_id")
+  private UUID groupId;
 
-  @Column(name = "class_name", length = 30)
-  private String className;
+  @Column(name = "class_id")
+  private UUID classId;
 }
