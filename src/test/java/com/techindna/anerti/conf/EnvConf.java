@@ -11,8 +11,7 @@ public class EnvConf {
           .withInitScripts(
               "test-init.sql",
               "test-course-init.sql",
-              "test-group-init.sql",
-              "test-student-group-init.sql");
+              "test-group-init.sql");
   static final GenericContainer<?> REDIS =
       new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
