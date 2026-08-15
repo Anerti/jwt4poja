@@ -54,8 +54,6 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "TEACHER")
                     .requestMatchers(HttpMethod.DELETE, "/groups/{groupId}")
                     .hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.POST, "/student-groups")
-                    .hasRole("ADMIN")
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
