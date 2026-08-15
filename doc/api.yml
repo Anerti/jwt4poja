@@ -607,15 +607,14 @@ paths:
   /students:
     post:
       tags: [students]
-      summary: Bulk insert students (ADMIN)
+      summary: Create a student (ADMIN)
       description: |
-        Creates the underlying user accounts (role `STUDENT`) and their student
-        inheritance records in one atomic operation. Students are not created
-        through self-registration — an `ADMIN` provisions them. The batch is
-        all-or-nothing: if any item is invalid, references an unknown `groupId`
-        / `classId`, or collides on `username`, `email` or `ref`, the whole
-        request         fails and no student is created. Max 10 students per request.
-      operationId: createStudents
+        Creates the underlying user account (role `STUDENT`) and its student
+        inheritance record in one operation. Students are not created through
+        self-registration — an `ADMIN` provisions them. `username`, `email` and
+        `ref` must be unique; `groupId` and `classId` must reference an existing
+        group and class.
+      operationId: createStudent
       security:
         - bearerAuth: []
       requestBody:
@@ -623,14 +622,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateStudentRequest'
+              $ref: '#/components/schemas/CreateStudentInput'
       responses:
         '201':
-          description: Students created
+          description: Student created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateStudentListResponse'
+                $ref: '#/components/schemas/UserExtendStudent'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1921,40 +1920,6 @@ components:
         learningPath: EL
         groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
         classId: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f
-    CreateStudentRequest:
-      type: object
-      required: [data]
-      description: Batch of students to create. Applied atomically — the whole batch succeeds or none of it does.
-      properties:
-        data:
-          type: array
-          minItems: 1
-          maxItems: 10
-          items:
-            $ref: '#/components/schemas/CreateStudentInput'
-      example:
-        data:
-          - username: mdupont
-            password: s3cur3P@ss
-            firstName: Marie
-            lastName: Dupont
-            email: marie.dupont@hacheuil.edu
-            ref: '2023-001'
-            joinedAt: 2023-09-04T09:00:00Z
-            level: L2
-            learningPath: EL
-            groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
-            classId: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f
-    CreateStudentListResponse:
-      type: object
-      required: [data, meta]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/UserExtendStudent'
-        meta:
-          $ref: '#/components/schemas/Meta'
     UpdateStudentInput:
       type: object
       description: Partial update — only present fields are applied
