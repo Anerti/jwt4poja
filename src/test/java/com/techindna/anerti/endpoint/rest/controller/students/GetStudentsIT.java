@@ -7,12 +7,14 @@ import com.techindna.anerti.dto.StudentListResponse;
 import com.techindna.anerti.dto.UserExtendStudent;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.ClassRepository;
+import com.techindna.anerti.repository.GroupRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.enums.LearningPath;
 import com.techindna.anerti.repository.enums.Level;
 import com.techindna.anerti.repository.enums.StudentStatus;
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JClass;
+import com.techindna.anerti.repository.model.JGroup;
 import com.techindna.anerti.repository.model.JStudentInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.jwt.JwtTokenProvider;
@@ -38,6 +40,7 @@ class GetStudentsIT extends FacadeIT {
   private final AuthRepository authRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
   private final ClassRepository classRepository;
+  private final GroupRepository groupRepository;
   private final JwtTokenProvider jwtTokenProvider;
   private final PasswordEncoder passwordEncoder;
 
@@ -46,12 +49,14 @@ class GetStudentsIT extends FacadeIT {
       AuthRepository authRepository,
       StudentInheritanceRepository studentInheritanceRepository,
       ClassRepository classRepository,
+      GroupRepository groupRepository,
       JwtTokenProvider jwtTokenProvider,
       PasswordEncoder passwordEncoder) {
     this.restTemplate = restTemplate;
     this.authRepository = authRepository;
     this.studentInheritanceRepository = studentInheritanceRepository;
     this.classRepository = classRepository;
+    this.groupRepository = groupRepository;
     this.jwtTokenProvider = jwtTokenProvider;
     this.passwordEncoder = passwordEncoder;
     restTemplate.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
@@ -62,6 +67,7 @@ class GetStudentsIT extends FacadeIT {
     authRepository.deleteAll();
     studentInheritanceRepository.deleteAll();
     classRepository.deleteAll();
+    groupRepository.deleteAll();
   }
 
   @Test
@@ -74,6 +80,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-002",
@@ -83,6 +90,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         "CQ1");
 
     ResponseEntity<StudentListResponse> response = getStudents("", adminToken());
@@ -112,6 +120,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
 
     ResponseEntity<StudentListResponse> response = getStudents("", teacherToken());
@@ -131,6 +140,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-002",
@@ -140,6 +150,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         null);
     String admin = adminToken();
 
@@ -169,6 +180,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-002",
@@ -178,6 +190,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-003",
@@ -187,6 +200,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.COMMON,
         StudentStatus.ACTIVE,
+        null,
         null);
 
     StudentListResponse response = getStudents("?learningPath=EL", adminToken()).getBody();
@@ -207,6 +221,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-002",
@@ -216,6 +231,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.INACTIVE,
+        null,
         null);
 
     StudentListResponse response = getStudents("?studentStatus=INACTIVE", adminToken()).getBody();
@@ -238,6 +254,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         "CQ1");
     saveStudent(
         "2023-002",
@@ -247,6 +264,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         "TSMA1");
     saveStudent(
         "2023-003",
@@ -256,9 +274,83 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
 
     StudentListResponse response = getStudents("?className=CQ1", adminToken()).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.meta().total()).isEqualTo(1);
+    assertThat(response.data()).hasSize(1);
+    assertThat(response.data().get(0).username()).isEqualTo("mdupont");
+  }
+
+  @Test
+  void level_filters_exactly() {
+    saveStudent(
+        "2023-001",
+        "mdupont",
+        "Marie",
+        "Dupont",
+        Level.L2,
+        LearningPath.EL,
+        StudentStatus.ACTIVE,
+        null,
+        null);
+    saveStudent(
+        "2023-002",
+        "jmoreau",
+        "Julie",
+        "Moreau",
+        Level.L3,
+        LearningPath.TN,
+        StudentStatus.ACTIVE,
+        null,
+        null);
+
+    StudentListResponse response = getStudents("?level=L2", adminToken()).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.meta().total()).isEqualTo(1);
+    assertThat(response.data()).hasSize(1);
+    assertThat(response.data().get(0).username()).isEqualTo("mdupont");
+    assertThat(response.data().get(0).studentInheritance().level()).isEqualTo(Level.L2);
+  }
+
+  @Test
+  void group_ref_filters_exactly() {
+    saveStudent(
+        "2023-001",
+        "mdupont",
+        "Marie",
+        "Dupont",
+        Level.L2,
+        LearningPath.EL,
+        StudentStatus.ACTIVE,
+        "CQ1",
+        null);
+    saveStudent(
+        "2023-002",
+        "jmoreau",
+        "Julie",
+        "Moreau",
+        Level.L3,
+        LearningPath.TN,
+        StudentStatus.ACTIVE,
+        "TSMA1",
+        null);
+    saveStudent(
+        "2023-003",
+        "sbernard",
+        "Sara",
+        "Bernard",
+        Level.L2,
+        LearningPath.EL,
+        StudentStatus.ACTIVE,
+        null,
+        null);
+
+    StudentListResponse response = getStudents("?groupRef=CQ1", adminToken()).getBody();
 
     assertThat(response).isNotNull();
     assertThat(response.meta().total()).isEqualTo(1);
@@ -276,6 +368,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        "CQ1",
         "CQ1");
     saveStudent(
         "2023-002",
@@ -285,6 +378,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         "TSMA1");
     saveStudent(
         "2023-003",
@@ -294,10 +388,13 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.INACTIVE,
+        null,
         "TSMA1");
 
     StudentListResponse response =
-        getStudents("?search=marie&learningPath=EL&className=CQ1", adminToken()).getBody();
+        getStudents(
+                "?search=marie&level=L2&learningPath=EL&groupRef=CQ1&className=CQ1", adminToken())
+            .getBody();
 
     assertThat(response).isNotNull();
     assertThat(response.meta().total()).isEqualTo(1);
@@ -315,6 +412,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-002",
@@ -324,6 +422,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-003",
@@ -333,6 +432,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-004",
@@ -342,6 +442,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-005",
@@ -351,6 +452,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.COMMON,
         StudentStatus.ACTIVE,
+        null,
         null);
     String admin = adminToken();
 
@@ -385,6 +487,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-002",
@@ -394,6 +497,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-003",
@@ -403,6 +507,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-004",
@@ -412,6 +517,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L3,
         LearningPath.TN,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveStudent(
         "2023-005",
@@ -421,6 +527,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.COMMON,
         StudentStatus.ACTIVE,
+        null,
         null);
     String admin = adminToken();
 
@@ -452,6 +559,7 @@ class GetStudentsIT extends FacadeIT {
         Level.L2,
         LearningPath.EL,
         StudentStatus.ACTIVE,
+        null,
         null);
     saveUser("p_martin", "Paul", "Martin", UserRole.TEACHER);
 
@@ -487,11 +595,35 @@ class GetStudentsIT extends FacadeIT {
   }
 
   @Test
+  void invalid_level_is_bad_request() {
+    ResponseEntity<String> response = getStudentsError("?level=NOPE", adminToken());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(response.getBody()).contains("Invalid parameter: level");
+  }
+
+  @Test
   void invalid_student_status_is_bad_request() {
     ResponseEntity<String> response = getStudentsError("?studentStatus=NOPE", adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("Invalid parameter: studentStatus");
+  }
+
+  @Test
+  void overlong_group_ref_is_unprocessable() {
+    ResponseEntity<String> response = getStudentsError("?groupRef=TOOLONGREF-123", adminToken());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getBody()).contains("ref must not exceed 10 characters");
+  }
+
+  @Test
+  void invalid_group_ref_chars_are_unprocessable() {
+    ResponseEntity<String> response = getStudentsError("?groupRef=CQ1!", adminToken());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getBody()).contains("Ref CQ1! is invalid");
   }
 
   @Test
@@ -518,8 +650,10 @@ class GetStudentsIT extends FacadeIT {
       Level level,
       LearningPath learningPath,
       StudentStatus status,
+      String groupRef,
       String className) {
     UUID classId = classIdFor(className);
+    UUID groupId = groupIdFor(groupRef);
     JStudentInheritance inheritance =
         studentInheritanceRepository.save(
             JStudentInheritance.builder()
@@ -527,6 +661,7 @@ class GetStudentsIT extends FacadeIT {
                 .level(level)
                 .learningPath(learningPath)
                 .studentStatus(status)
+                .groupId(groupId)
                 .classId(classId)
                 .build());
     return authRepository.save(
@@ -549,6 +684,16 @@ class GetStudentsIT extends FacadeIT {
         .findByName(className)
         .orElseGet(
             () -> classRepository.save(JClass.builder().name(className).yearOf(2023).build()))
+        .getId();
+  }
+
+  private UUID groupIdFor(String groupRef) {
+    if (groupRef == null) {
+      return null;
+    }
+    return groupRepository
+        .findByRef(groupRef)
+        .orElseGet(() -> groupRepository.save(JGroup.builder().ref(groupRef).build()))
         .getId();
   }
 
