@@ -1,10 +1,6 @@
 package com.techindna.anerti.service;
 
-import com.techindna.anerti.dto.CreateStudentGroupInput;
-import com.techindna.anerti.dto.CreateStudentGroupListResponse;
-import com.techindna.anerti.dto.CreateStudentGroupOutput;
-import com.techindna.anerti.dto.CreateStudentGroupRequest;
-import com.techindna.anerti.dto.Meta;
+import com.techindna.anerti.dto.*;
 import com.techindna.anerti.exception.http.ConflictException;
 import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.StudentGroupMapper;
@@ -12,7 +8,6 @@ import com.techindna.anerti.repository.StudentGroupRepository;
 import com.techindna.anerti.repository.model.JStudentGroup;
 import com.techindna.anerti.validator.StudentGroupValidator;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,8 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @AllArgsConstructor
 public class StudentGroupService {
 
-  private static final String UNIQUE_CONSTRAINT_VIOLATION = "23505";
-  private static final String FOREIGN_KEY_VIOLATION = "23503";
+  private static final String UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505";
+  private static final String FOREIGN_KEY_VIOLATION_CODE = "23503";
 
   private final StudentGroupRepository studentGroupRepository;
   private final StudentGroupValidator studentGroupValidator;
@@ -34,10 +29,8 @@ public class StudentGroupService {
   public CreateStudentGroupListResponse enrollStudents(CreateStudentGroupRequest request) {
     studentGroupValidator.validateCreate(request);
 
-    List<CreateStudentGroupOutput> outputs = new ArrayList<>();
-    for (CreateStudentGroupInput item : request.data()) {
-      outputs.add(createEnrollment(item));
-    }
+    List<CreateStudentGroupOutput> outputs =
+        request.data().stream().map(this::createEnrollment).toList();
     return new CreateStudentGroupListResponse(outputs, new Meta(1, outputs.size(), outputs.size()));
   }
 
@@ -45,14 +38,15 @@ public class StudentGroupService {
     try {
       JStudentGroup saved =
           studentGroupRepository.saveAndFlush(studentGroupMapper.toRepository(item));
+      
       return studentGroupMapper.toDto(saved);
     } catch (DataIntegrityViolationException e) {
-      if (sqlState(e, UNIQUE_CONSTRAINT_VIOLATION)) {
+      if (sqlState(e, UNIQUE_CONSTRAINT_VIOLATION_CODE)) {
         throw new ConflictException(
             "Student %s is already enrolled in group %s"
                 .formatted(item.studentId(), item.groupId()));
       }
-      if (sqlState(e, FOREIGN_KEY_VIOLATION)) {
+      if (sqlState(e, FOREIGN_KEY_VIOLATION_CODE)) {
         throw new NotFoundException(
             "Student %s or group %s not found".formatted(item.studentId(), item.groupId()));
       }
