@@ -1,6 +1,10 @@
 package com.techindna.anerti.service;
 
-import com.techindna.anerti.dto.*;
+import com.techindna.anerti.dto.CreateStudentGroupInput;
+import com.techindna.anerti.dto.CreateStudentGroupListResponse;
+import com.techindna.anerti.dto.CreateStudentGroupOutput;
+import com.techindna.anerti.dto.CreateStudentGroupRequest;
+import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.exception.http.ConflictException;
 import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.StudentGroupMapper;
@@ -38,7 +42,7 @@ public class StudentGroupService {
     try {
       JStudentGroup saved =
           studentGroupRepository.saveAndFlush(studentGroupMapper.toRepository(item));
-      
+
       return studentGroupMapper.toDto(saved);
     } catch (DataIntegrityViolationException e) {
       if (sqlState(e, UNIQUE_CONSTRAINT_VIOLATION_CODE)) {
