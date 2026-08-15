@@ -4,8 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.techindna.anerti.conf.FacadeIT;
 import com.techindna.anerti.dto.CreateStudentInput;
-import com.techindna.anerti.dto.CreateStudentListResponse;
-import com.techindna.anerti.dto.CreateStudentRequest;
+import com.techindna.anerti.dto.UserExtendStudent;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.ClassRepository;
 import com.techindna.anerti.repository.GroupRepository;
@@ -20,7 +19,6 @@ import com.techindna.anerti.repository.model.JStudentInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.jwt.JwtTokenProvider;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,31 +72,24 @@ class PostStudentsIT extends FacadeIT {
   }
 
   @Test
-  void admin_creates_students_with_defaults() {
-    ResponseEntity<CreateStudentListResponse> response =
-        postStudents(request(validInput()), adminToken());
+  void admin_creates_student_with_defaults() {
+    ResponseEntity<UserExtendStudent> response = postStudent(validInput(), adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    CreateStudentListResponse body = response.getBody();
+    UserExtendStudent body = response.getBody();
     assertThat(body).isNotNull();
-    assertThat(body.meta().page()).isEqualTo(1);
-    assertThat(body.meta().size()).isEqualTo(1);
-    assertThat(body.meta().total()).isEqualTo(1);
-    assertThat(body.data()).hasSize(1);
-
-    var student = body.data().get(0);
-    assertThat(student.username()).isEqualTo("mdupont");
-    assertThat(student.firstName()).isEqualTo("Marie");
-    assertThat(student.lastName()).isEqualTo("Dupont");
-    assertThat(student.email()).isEqualTo("marie.dupont@hacheuil.edu");
-    assertThat(student.role()).isEqualTo(UserRole.STUDENT);
-    assertThat(student.studentInheritance().ref()).isEqualTo("2023-001");
-    assertThat(student.studentInheritance().level()).isEqualTo(Level.L2);
-    assertThat(student.studentInheritance().learningPath()).isEqualTo(LearningPath.EL);
-    assertThat(student.studentInheritance().studentStatus()).isEqualTo(StudentStatus.ACTIVE);
-    assertThat(student.studentInheritance().joinedAt()).isNull();
-    assertThat(student.groupId()).isNull();
-    assertThat(student.classId()).isNull();
+    assertThat(body.username()).isEqualTo("mdupont");
+    assertThat(body.firstName()).isEqualTo("Marie");
+    assertThat(body.lastName()).isEqualTo("Dupont");
+    assertThat(body.email()).isEqualTo("marie.dupont@hacheuil.edu");
+    assertThat(body.role()).isEqualTo(UserRole.STUDENT);
+    assertThat(body.studentInheritance().ref()).isEqualTo("2023-001");
+    assertThat(body.studentInheritance().level()).isEqualTo(Level.L2);
+    assertThat(body.studentInheritance().learningPath()).isEqualTo(LearningPath.EL);
+    assertThat(body.studentInheritance().studentStatus()).isEqualTo(StudentStatus.ACTIVE);
+    assertThat(body.studentInheritance().joinedAt()).isNull();
+    assertThat(body.groupId()).isNull();
+    assertThat(body.classId()).isNull();
 
     JUser saved = authRepository.findByEmail("marie.dupont@hacheuil.edu").orElseThrow();
     assertThat(saved.getRole()).isEqualTo(UserRole.STUDENT);
@@ -112,7 +103,7 @@ class PostStudentsIT extends FacadeIT {
   }
 
   @Test
-  void admin_creates_students_with_joined_at_group_and_class() {
+  void admin_creates_student_with_joined_at_group_and_class() {
     Instant joinedAt = Instant.parse("2023-09-04T09:00:00Z");
     JGroup group = groupRepository.save(JGroup.builder().ref("CQ1").build());
     JClass jclass = classRepository.save(JClass.builder().name("CQ1").yearOf(2023).build());
@@ -120,20 +111,17 @@ class PostStudentsIT extends FacadeIT {
         withGroupId(
             withClassId(withJoinedAt(validInput(), joinedAt), jclass.getId()), group.getId());
 
-    ResponseEntity<CreateStudentListResponse> response = postStudents(request(input), adminToken());
+    ResponseEntity<UserExtendStudent> response = postStudent(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    CreateStudentListResponse body = response.getBody();
+    UserExtendStudent body = response.getBody();
     assertThat(body).isNotNull();
-    assertThat(body.data()).hasSize(1);
-
-    var student = body.data().get(0);
-    assertThat(student.studentInheritance().ref()).isEqualTo("2023-001");
-    assertThat(student.studentInheritance().level()).isEqualTo(Level.L2);
-    assertThat(student.studentInheritance().learningPath()).isEqualTo(LearningPath.EL);
-    assertThat(student.studentInheritance().joinedAt()).isEqualTo(joinedAt);
-    assertThat(student.groupId()).isEqualTo(group.getId());
-    assertThat(student.classId()).isEqualTo(jclass.getId());
+    assertThat(body.studentInheritance().ref()).isEqualTo("2023-001");
+    assertThat(body.studentInheritance().level()).isEqualTo(Level.L2);
+    assertThat(body.studentInheritance().learningPath()).isEqualTo(LearningPath.EL);
+    assertThat(body.studentInheritance().joinedAt()).isEqualTo(joinedAt);
+    assertThat(body.groupId()).isEqualTo(group.getId());
+    assertThat(body.classId()).isEqualTo(jclass.getId());
 
     JUser saved = authRepository.findByEmail("marie.dupont@hacheuil.edu").orElseThrow();
     assertThat(saved.getStudentInheritance().getGroupId()).isEqualTo(group.getId());
@@ -141,41 +129,8 @@ class PostStudentsIT extends FacadeIT {
   }
 
   @Test
-  void batch_creates_multiple_students() {
-    CreateStudentInput first = validInput();
-    CreateStudentInput second =
-        new CreateStudentInput(
-            "jmoreau",
-            "StrongPass12!",
-            "Julie",
-            "Moreau",
-            "julie.moreau@hacheuil.edu",
-            "2023-002",
-            null,
-            Level.L3,
-            LearningPath.TN,
-            null,
-            null);
-
-    ResponseEntity<CreateStudentListResponse> response =
-        postStudents(request(first, second), adminToken());
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    CreateStudentListResponse body = response.getBody();
-    assertThat(body).isNotNull();
-    assertThat(body.meta().page()).isEqualTo(1);
-    assertThat(body.meta().size()).isEqualTo(2);
-    assertThat(body.meta().total()).isEqualTo(2);
-    assertThat(body.data()).hasSize(2);
-    assertThat(body.data())
-        .extracting(student -> student.username())
-        .containsExactlyInAnyOrder("mdupont", "jmoreau");
-    assertThat(authRepository.findByEmail("julie.moreau@hacheuil.edu")).isPresent();
-  }
-
-  @Test
   void missing_token_is_unauthorized() {
-    ResponseEntity<String> response = postStudentsError(request(validInput()), null);
+    ResponseEntity<String> response = postStudentError(validInput(), null);
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     assertThat(response.getBody()).contains("Authentication required.");
@@ -183,7 +138,7 @@ class PostStudentsIT extends FacadeIT {
 
   @Test
   void teacher_role_is_forbidden() {
-    ResponseEntity<String> response = postStudentsError(request(validInput()), teacherToken());
+    ResponseEntity<String> response = postStudentError(validInput(), teacherToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(response.getBody()).contains("Insufficient privileges.");
@@ -191,7 +146,7 @@ class PostStudentsIT extends FacadeIT {
 
   @Test
   void student_role_is_forbidden() {
-    ResponseEntity<String> response = postStudentsError(request(validInput()), studentToken());
+    ResponseEntity<String> response = postStudentError(validInput(), studentToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(response.getBody()).contains("Insufficient privileges.");
@@ -201,7 +156,7 @@ class PostStudentsIT extends FacadeIT {
   void duplicate_username_is_conflict() {
     saveUser("mdupont", "other@hacheuil.edu", UserRole.STUDENT);
 
-    ResponseEntity<String> response = postStudentsError(request(validInput()), adminToken());
+    ResponseEntity<String> response = postStudentError(validInput(), adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody()).contains("Cannot use username mdupont");
@@ -211,7 +166,7 @@ class PostStudentsIT extends FacadeIT {
   void duplicate_email_is_conflict() {
     saveUser("other_user", "marie.dupont@hacheuil.edu", UserRole.STUDENT);
 
-    ResponseEntity<String> response = postStudentsError(request(validInput()), adminToken());
+    ResponseEntity<String> response = postStudentError(validInput(), adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody()).contains("cannot use email marie.dupont@hacheuil.edu");
@@ -226,36 +181,10 @@ class PostStudentsIT extends FacadeIT {
             .learningPath(LearningPath.EL)
             .build());
 
-    ResponseEntity<String> response = postStudentsError(request(validInput()), adminToken());
+    ResponseEntity<String> response = postStudentError(validInput(), adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     assertThat(response.getBody()).contains("Cannot use ref 2023-001");
-  }
-
-  @Test
-  void duplicate_within_batch_is_conflict_and_rolls_back() {
-    CreateStudentInput first = validInput();
-    CreateStudentInput duplicateUsername =
-        new CreateStudentInput(
-            "mdupont",
-            "StrongPass12!",
-            "Julie",
-            "Moreau",
-            "julie.moreau@hacheuil.edu",
-            "2023-002",
-            null,
-            Level.L3,
-            LearningPath.TN,
-            null,
-            null);
-
-    ResponseEntity<String> response =
-        postStudentsError(request(first, duplicateUsername), adminToken());
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-    assertThat(response.getBody()).contains("Cannot use username mdupont");
-    assertThat(studentInheritanceRepository.count()).isZero();
-    assertThat(authRepository.findAll()).noneMatch(user -> user.getRole() == UserRole.STUDENT);
   }
 
   @Test
@@ -263,7 +192,7 @@ class PostStudentsIT extends FacadeIT {
     UUID unknown = UUID.randomUUID();
     CreateStudentInput input = withGroupId(validInput(), unknown);
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(response.getBody()).contains("Group %s not found".formatted(unknown));
@@ -274,53 +203,17 @@ class PostStudentsIT extends FacadeIT {
     UUID unknown = UUID.randomUUID();
     CreateStudentInput input = withClassId(validInput(), unknown);
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     assertThat(response.getBody()).contains("Something went wrong, please try again later");
   }
 
   @Test
-  void empty_batch_is_bad_request() {
-    ResponseEntity<String> response =
-        postStudentsError(new CreateStudentRequest(List.of()), adminToken());
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(response.getBody()).contains("data must contain at least one student");
-  }
-
-  @Test
-  void too_many_students_is_unprocessable() {
-    List<CreateStudentInput> many =
-        java.util.stream.IntStream.range(0, 11)
-            .mapToObj(
-                i ->
-                    new CreateStudentInput(
-                        "user" + i,
-                        "StrongPass12!",
-                        "Student",
-                        "Name",
-                        "student" + i + "@hacheuil.edu",
-                        "2023-%03d".formatted(i),
-                        null,
-                        Level.L2,
-                        LearningPath.EL,
-                        null,
-                        null))
-            .toList();
-
-    ResponseEntity<String> response =
-        postStudentsError(new CreateStudentRequest(many), adminToken());
-
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-    assertThat(response.getBody()).contains("data must not contain more than 10 students");
-  }
-
-  @Test
   void weak_password_is_unprocessable() {
     CreateStudentInput input = withPassword(validInput(), "short");
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody()).contains("Password must be at least 12 characters");
@@ -330,7 +223,7 @@ class PostStudentsIT extends FacadeIT {
   void invalid_email_is_unprocessable() {
     CreateStudentInput input = withEmail(validInput(), "not-an-email");
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody()).contains("Email not-an-email is not valid");
@@ -340,7 +233,7 @@ class PostStudentsIT extends FacadeIT {
   void blank_first_name_is_unprocessable() {
     CreateStudentInput input = withFirstName(validInput(), "");
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody()).contains("firstName is required and cannot be blank");
@@ -350,7 +243,7 @@ class PostStudentsIT extends FacadeIT {
   void invalid_ref_is_unprocessable() {
     CreateStudentInput input = withRef(validInput(), "2023 001");
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody()).contains("Ref 2023 001 is invalid");
@@ -360,7 +253,7 @@ class PostStudentsIT extends FacadeIT {
   void missing_level_is_unprocessable() {
     CreateStudentInput input = withLevel(validInput(), null);
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody()).contains("level is required and cannot be blank");
@@ -370,7 +263,7 @@ class PostStudentsIT extends FacadeIT {
   void missing_learning_path_is_unprocessable() {
     CreateStudentInput input = withLearningPath(validInput(), null);
 
-    ResponseEntity<String> response = postStudentsError(request(input), adminToken());
+    ResponseEntity<String> response = postStudentError(input, adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody()).contains("learningPath is required and cannot be blank");
@@ -382,18 +275,14 @@ class PostStudentsIT extends FacadeIT {
     String body =
         """
         {
-          "data": [
-            {
-              "username": "mdupont",
-              "password": "StrongPass12!",
-              "firstName": "Marie",
-              "lastName": "Dupont",
-              "email": "marie.dupont@hacheuil.edu",
-              "ref": "2023-001",
-              "level": "NOPE",
-              "learningPath": "EL"
-            }
-          ]
+          "username": "mdupont",
+          "password": "StrongPass12!",
+          "firstName": "Marie",
+          "lastName": "Dupont",
+          "email": "marie.dupont@hacheuil.edu",
+          "ref": "2023-001",
+          "level": "NOPE",
+          "learningPath": "EL"
         }
         """;
 
@@ -568,10 +457,6 @@ class PostStudentsIT extends FacadeIT {
         classId);
   }
 
-  private CreateStudentRequest request(CreateStudentInput... inputs) {
-    return new CreateStudentRequest(List.of(inputs));
-  }
-
   private JUser saveUser(String username, String email, UserRole role) {
     return authRepository.save(
         JUser.builder()
@@ -599,16 +484,15 @@ class PostStudentsIT extends FacadeIT {
     return jwtTokenProvider.generateToken(student.getId().toString(), student.getRole().name());
   }
 
-  private ResponseEntity<CreateStudentListResponse> postStudents(
-      CreateStudentRequest request, String token) {
+  private ResponseEntity<UserExtendStudent> postStudent(CreateStudentInput request, String token) {
     return restTemplate.exchange(
         "/students",
         HttpMethod.POST,
         new HttpEntity<>(request, jsonHeaders(token)),
-        CreateStudentListResponse.class);
+        UserExtendStudent.class);
   }
 
-  private ResponseEntity<String> postStudentsError(CreateStudentRequest request, String token) {
+  private ResponseEntity<String> postStudentError(CreateStudentInput request, String token) {
     return restTemplate.exchange(
         "/students", HttpMethod.POST, new HttpEntity<>(request, jsonHeaders(token)), String.class);
   }
