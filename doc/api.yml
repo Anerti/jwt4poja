@@ -614,7 +614,7 @@ paths:
         through self-registration — an `ADMIN` provisions them. The batch is
         all-or-nothing: if any item is invalid, references an unknown `groupId`
         / `classId`, or collides on `username`, `email` or `ref`, the whole
-        request fails and no student is created. Max 100 students per request.
+        request         fails and no student is created. Max 10 students per request.
       operationId: createStudents
       security:
         - bearerAuth: []
@@ -1929,7 +1929,7 @@ components:
         data:
           type: array
           minItems: 1
-          maxItems: 100
+          maxItems: 10
           items:
             $ref: '#/components/schemas/CreateStudentInput'
       example:
