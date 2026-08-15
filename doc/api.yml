@@ -1117,25 +1117,32 @@ paths:
       summary: List student-group enrollments
       description: |
         Lists enrollments. Each item embeds the full student user (with its
-        inheritance record) and the full group. `studentId` and `groupId` are exact-match
-        filters. ADMIN sees all enrollments; a TEACHER sees only the students
-        enrolled in groups they need for their courses.
+        inheritance record) and the full group. `studentRef` and `groupRef` are
+        exact-match filters; `search` matches the student's first name, last
+        name, email or username (case-insensitive substring, partial match).
+        ADMIN sees all enrollments; a TEACHER sees only the students enrolled
+        in groups they need for their courses.
       operationId: listStudentGroups
       security:
         - bearerAuth: []
       parameters:
-        - name: studentId
+        - name: search
           in: query
           required: false
           schema:
             type: string
-            format: uuid
-        - name: groupId
+        - name: studentRef
           in: query
           required: false
           schema:
             type: string
-            format: uuid
+            maxLength: 10
+        - name: groupRef
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 10
         - name: page
           in: query
           required: false
