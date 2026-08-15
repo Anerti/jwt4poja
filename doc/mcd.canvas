@@ -8,14 +8,16 @@
 		{"id":"4f530b8aba90ed65","type":"text","text":"## course_exam","x":-2000,"y":-1019,"width":215,"height":60,"color":"#ffffff"},
 		{"id":"2e31279e8e7f01fc","type":"text","text":"# history\n\n- `id uuid pk default gen_random_uuid()`\n- `grade_id uuid fk references grade(id) not null`\n- `grade numeric(10, 2) not null`\n- `description text not null`\n- `created_at timestampz default now()`","x":-3140,"y":960,"width":700,"height":240,"color":"#dea311"},
 		{"id":"74212883100470b5","type":"text","text":"## grade_history","x":-2915,"y":530,"width":250,"height":60,"color":"#ffffff"},
-		{"id":"0f69f1c440cead33","type":"text","text":"# group\n\n- `id uuid pk default gen_random_uuid()`\n- `ref varchar(10) unique not null`\n- `created_at timestampz default now()`\n- `type enum('EL', 'TN', 'COMMON') default 'COMMON'`","x":-1350,"y":960,"width":737,"height":240,"color":"#dea311"},
 		{"id":"d5a02ab6c0fb9995","type":"text","text":"# user\n\n- `id uuid pk default gen_random_uuid()`\n- `username varchar(50) unique not null`\n- `email varchar(100) unique not null`\n- `password varchar(255) not null`\n- `first_name varchar(100) not null`\n- `last_name varchar(100) not null`\n- `role enum('ADMIN', 'TEACHER', 'STUDENT') not null`\n- `teacher_inheritance_id uuid fk references teacher_inheritance(id)`\n- `student_inheritance_id uuid fk references student_inheritance(id)`\n- `created_at timestampz default now()`\n- `updated_at timestampz`","x":1000,"y":-244,"width":664,"height":417,"color":"#dea311"},
 		{"id":"4106520315d26451","type":"text","text":"## grade_student","x":-2000,"y":-66,"width":220,"height":60,"color":"#ffffff"},
 		{"id":"5a1a1b5022bfc26b","type":"text","text":"# grade\n\n- `id uuid pk default gen_random_uuid()`\n- `student_inheritance_id uuid fk references student_inheritance(id) not null`\n- `exam_id uuid fk references exam(id) not null`\n- `created_at timestampz default now()`","x":-3149,"y":-224,"width":719,"height":377,"color":"#dea311"},
-		{"id":"87519ca5f1bebc10","type":"text","text":"# student_inheritance\n\n- `id uuid pk default gen_random_uuid()`\n- `ref varchar(10) unique not null`\n- `joigned_at timestampz`\n- `level enum('L1', 'L2', 'L3') not null`\n- `learning_path enum('EL', 'TN', 'COMMON') default 'COMMON'`\n- `student_status enum('GRADUATED', 'ACTIVE', 'INACTIVE') default 'ACTIVE'`\n- `graduation_year int`\n- `class_name varchar(30)`\n- `group_id uuid fk references group(id) not null`","x":-1344,"y":-233,"width":724,"height":396,"color":"#dea311"},
-		{"id":"78acdb432612325e","type":"text","text":"## student_group","x":-1089,"y":480,"width":216,"height":60,"color":"#ffffff"},
+		{"id":"87519ca5f1bebc10","type":"text","text":"# student_inheritance\n\n- `id uuid pk default gen_random_uuid()`\n- `ref varchar(10) unique not null`\n- `joigned_at timestampz`\n- `level enum('L1', 'L2', 'L3') not null`\n- `learning_path enum('EL', 'TN', 'COMMON') default 'COMMON'`\n- `student_status enum('GRADUATED', 'ACTIVE', 'INACTIVE') default 'ACTIVE'`\n- `group_id uuid fk references group(id) on delete set null`\n- `class_id uuid fk references class(id) on delete set null`","x":-1344,"y":-233,"width":724,"height":396,"color":"#dea311"},
 		{"id":"e5e2ff828bf734e7","type":"text","text":"## user_student_inheritance","x":-40,"y":-65,"width":340,"height":59,"color":"#ffffff"},
-		{"id":"7eb81c9ab0d752a6","type":"text","text":"## user_teacher_inheritance","x":1159,"y":-600,"width":347,"height":50,"color":"#ffffff"}
+		{"id":"7eb81c9ab0d752a6","type":"text","text":"## user_teacher_inheritance","x":1159,"y":-600,"width":347,"height":50,"color":"#ffffff"},
+		{"id":"b9cf6c34aa9da48c","type":"text","text":"## student_class","x":-420,"y":500,"width":200,"height":60,"color":"#ffffff"},
+		{"id":"78acdb432612325e","type":"text","text":"## student_group","x":-1768,"y":500,"width":216,"height":60,"color":"#ffffff"},
+		{"id":"0f69f1c440cead33","type":"text","text":"# group\n\n- `id uuid pk default gen_random_uuid()`\n- `ref varchar(10) unique not null`\n- `created_at timestampz default now()`\n- `type enum('EL', 'TN', 'COMMON') default 'COMMON'`","x":-2028,"y":960,"width":737,"height":240,"color":"#dea311"},
+		{"id":"23e89f0f3f032fc5","type":"text","text":"# class\n\n- `id uuid pk default gen_random_uuid()`\n- `name varchar(30) unique not null`\n- `year_of int not null`\n- `created_at timestampz default now()`\n- `updated_at timestampz`","x":-688,"y":960,"width":737,"height":240,"color":"#dea311"}
 	],
 	"edges":[
 		{"id":"20c467610a111546","fromNode":"d5a02ab6c0fb9995","fromSide":"left","toNode":"e5e2ff828bf734e7","toSide":"right","toEnd":"none","color":"#ffffff","label":"1,1"},
@@ -33,6 +35,8 @@
 		{"id":"b02c6c75fe2c91ef","fromNode":"d6f75ca4438cf96f","fromSide":"right","toNode":"e2129d2168d298c6","toSide":"left","toEnd":"none","color":"#ffffff","label":"1,N"},
 		{"id":"e6251c4b5ee9e20c","fromNode":"e2129d2168d298c6","fromSide":"right","toNode":"ee8fc96c2bc6ca07","toSide":"left","toEnd":"none","color":"#ffffff","label":"1,N"},
 		{"id":"a1c7896244cd02fb","fromNode":"5a1a1b5022bfc26b","fromSide":"bottom","toNode":"74212883100470b5","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,N"},
-		{"id":"daa503c9880e9de3","fromNode":"74212883100470b5","fromSide":"bottom","toNode":"2e31279e8e7f01fc","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,1"}
+		{"id":"daa503c9880e9de3","fromNode":"74212883100470b5","fromSide":"bottom","toNode":"2e31279e8e7f01fc","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"17478d0abf15d01e","fromNode":"87519ca5f1bebc10","fromSide":"bottom","toNode":"b9cf6c34aa9da48c","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,1"},
+		{"id":"ab94ed0b5f19774d","fromNode":"b9cf6c34aa9da48c","fromSide":"bottom","toNode":"23e89f0f3f032fc5","toSide":"top","toEnd":"none","color":"#ffffff","label":"1,N"}
 	]
 }

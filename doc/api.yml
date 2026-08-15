@@ -1817,13 +1817,6 @@ components:
           $ref: '#/components/schemas/LearningPath'
         studentStatus:
           $ref: '#/components/schemas/StudentStatus'
-        graduationYear:
-          type: integer
-          nullable: true
-        className:
-          type: string
-          maxLength: 30
-          nullable: true
       example:
         id: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         ref: '2023-001'
@@ -1831,8 +1824,6 @@ components:
         level: L2
         learningPath: EL
         studentStatus: ACTIVE
-        graduationYear: null
-        className: null
     UserExtendStudent:
       allOf:
         - $ref: '#/components/schemas/User'
@@ -1841,6 +1832,16 @@ components:
           properties:
             studentInheritance:
               $ref: '#/components/schemas/StudentInheritance'
+            groupId:
+              type: string
+              format: uuid
+              nullable: true
+              description: Group the student is currently enrolled in; null while unassigned.
+            classId:
+              type: string
+              format: uuid
+              nullable: true
+              description: Class the student is currently assigned to; null while unassigned.
       description: User account with its embedded student inheritance record.
       example:
         id: 3f3e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
@@ -1858,8 +1859,8 @@ components:
           level: L2
           learningPath: EL
           studentStatus: ACTIVE
-          graduationYear: null
-          className: null
+        groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        classId: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f
     CreateStudentInput:
       type: object
       required: [username, password, firstName, lastName, email, ref, level, learningPath]
@@ -1894,10 +1895,15 @@ components:
           $ref: '#/components/schemas/Level'
         learningPath:
           $ref: '#/components/schemas/LearningPath'
-        className:
+        groupId:
           type: string
-          maxLength: 30
-          description: Student's class name within its learning path (e.g. `CQ1`); null while unassigned.
+          format: uuid
+          description: Group the student is enrolled in at creation; null while unassigned.
+          nullable: true
+        classId:
+          type: string
+          format: uuid
+          description: Class the student is assigned to at creation; null while unassigned.
           nullable: true
       example:
         username: mdupont
@@ -1909,7 +1915,8 @@ components:
         joinedAt: 2023-09-04T09:00:00Z
         level: L2
         learningPath: EL
-        className: null
+        groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
+        classId: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f
     UpdateStudentInput:
       type: object
       description: Partial update — only present fields are applied
