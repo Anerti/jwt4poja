@@ -67,7 +67,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
   - `GET /courses` — 200 `CourseListResponse` (public); `search` substring on `ref`/`title`, exact `type` filter, `page`/`size` pagination.
 - **Students** — `endpoint/rest/controller/StudentController.java`:
   - `POST /students` — 201 `UserExtendStudent` (ADMIN-only); provisions a `user` row plus its `student_inheritance` (`level` / `learningPath` required, `studentStatus` defaults `ACTIVE`), validates input, maps unique violations to 409.
-  - `GET /students` — 200 `StudentListResponse` (ADMIN + TEACHER); `search` substring, exact `learningPath` / `studentStatus` filters, `className` filter, `page`/`size` pagination.
+  - `GET /students` — 200 `StudentListResponse` (ADMIN + TEACHER); `search` substring, exact `level` / `learningPath` / `studentStatus` / `groupRef` / `className` filters, `page`/`size` pagination.
 - **Groups** — `endpoint/rest/controller/GroupController.java`:
   - `POST /groups` — 201 `GroupOutput` (ADMIN-only); validates input, maps unique `ref` violations to 409.
   - `GET /groups` — 200 `GroupListResponse` (ADMIN + TEACHER); `search` substring on `ref`, exact `type` filter, `page`/`size` pagination.

@@ -10,12 +10,12 @@ import com.techindna.anerti.mapper.UserMapper;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.UserRepository;
 import com.techindna.anerti.repository.enums.LearningPath;
+import com.techindna.anerti.repository.enums.Level;
 import com.techindna.anerti.repository.enums.StudentStatus;
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JStudentInheritance;
 import com.techindna.anerti.repository.model.JUser;
-import com.techindna.anerti.validator.DataValidator;
-import com.techindna.anerti.validator.UserValidator;
+import com.techindna.anerti.validator.StudentValidator;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,8 +31,7 @@ public class StudentService {
 
   private final UserRepository userRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
-  private final UserValidator userValidator;
-  private final DataValidator dataValidator;
+  private final StudentValidator studentValidator;
   private final UserMapper userMapper;
   private final StudentInheritanceMapper studentInheritanceMapper;
   private final UserConflictHandler userConflictHandler;
@@ -41,26 +40,24 @@ public class StudentService {
   @Transactional(readOnly = true)
   public StudentListResponse listStudents(
       String search,
+      Level level,
       LearningPath learningPath,
       StudentStatus studentStatus,
+      String groupRef,
       String className,
       int page,
       int size) {
-    if (search != null && !search.isBlank()) {
-      dataValidator.validateSearchString(search);
-    }
-
-    if (className != null && !className.isBlank()) {
-      dataValidator.validateSearchString(className);
-    }
+    studentValidator.validateListFilters(search, groupRef, className);
 
     PageRequestData p = PageRequestData.of(page, size, Sort.by("createdAt", "username"));
 
     Page<JUser> jUsers =
         userRepository.searchStudents(
             search,
+            level == null ? null : level.name(),
             learningPath == null ? null : learningPath.name(),
             studentStatus == null ? null : studentStatus.name(),
+            groupRef,
             className,
             UserRole.STUDENT,
             p.pageable());
@@ -73,7 +70,7 @@ public class StudentService {
 
   @Transactional
   public UserExtendStudent createStudent(CreateStudentInput request) {
-    userValidator.validateCreateStudent(request);
+    studentValidator.validateCreateStudent(request);
 
     try {
       JStudentInheritance inheritance =

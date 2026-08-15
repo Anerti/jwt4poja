@@ -1,6 +1,5 @@
 package com.techindna.anerti.validator;
 
-import com.techindna.anerti.dto.CreateStudentInput;
 import com.techindna.anerti.dto.CreateTeacherInput;
 import com.techindna.anerti.dto.LoginInput;
 import com.techindna.anerti.exception.http.UnprocessableContentException;
@@ -14,46 +13,13 @@ public class UserValidator {
   private final DataValidator dataValidator;
 
   public void validateCreateTeacher(CreateTeacherInput request) {
-    validateUserAccount(
+    dataValidator.validateUserAccount(
         request.username(),
         request.password(),
         request.firstName(),
         request.lastName(),
         request.email(),
         request.ref());
-  }
-
-  public void validateCreateStudent(CreateStudentInput request) {
-    validateUserAccount(
-        request.username(),
-        request.password(),
-        request.firstName(),
-        request.lastName(),
-        request.email(),
-        request.ref());
-
-    if (request.level() == null) {
-      throw new UnprocessableContentException("level is required and cannot be blank");
-    }
-
-    if (request.learningPath() == null) {
-      throw new UnprocessableContentException("learningPath is required and cannot be blank");
-    }
-  }
-
-  private void validateUserAccount(
-      String username,
-      String password,
-      String firstName,
-      String lastName,
-      String email,
-      String ref) {
-    dataValidator.validateUsername(username);
-    dataValidator.checkPasswordSecurityLevel(password);
-    dataValidator.validateName("firstName", firstName);
-    dataValidator.validateName("lastName", lastName);
-    dataValidator.validateEmail("email", email);
-    dataValidator.validateRef(ref);
   }
 
   public void validateLogin(LoginInput request) {

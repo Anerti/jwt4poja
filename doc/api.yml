@@ -649,8 +649,8 @@ paths:
       summary: List students (ADMIN, TEACHER)
       description: |
         Lists students. `search` matches `ref`, first name or last name
-        (case-insensitive substring, partial match). `learningPath`,
-        `studentStatus` and `className` are exact-match filters.
+        (case-insensitive substring, partial match). `level`, `learningPath`,
+        `studentStatus`, `groupRef` and `className` are exact-match filters.
       operationId: listStudents
       security:
         - bearerAuth: []
@@ -660,21 +660,38 @@ paths:
           required: false
           schema:
             type: string
+        - name: level
+          in: query
+          required: false
+          description: Exact match on the student's academic level.
+          schema:
+            $ref: '#/components/schemas/Level'
         - name: learningPath
           in: query
           required: false
+          description: Exact match on the student's learning path.
           schema:
             $ref: '#/components/schemas/LearningPath'
         - name: studentStatus
           in: query
           required: false
+          description: Exact match on the student's status.
           schema:
             $ref: '#/components/schemas/StudentStatus'
+        - name: groupRef
+          in: query
+          required: false
+          description: Exact match on the reference of the group the student belongs to (`group.ref`).
+          schema:
+            type: string
+            maxLength: 10
         - name: className
           in: query
           required: false
+          description: Exact match on the name of the class the student is enrolled in (`class.name`).
           schema:
             type: string
+            maxLength: 30
         - name: page
           in: query
           required: false

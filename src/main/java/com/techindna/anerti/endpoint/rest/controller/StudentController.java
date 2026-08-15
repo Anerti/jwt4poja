@@ -4,6 +4,7 @@ import com.techindna.anerti.dto.CreateStudentInput;
 import com.techindna.anerti.dto.StudentListResponse;
 import com.techindna.anerti.dto.UserExtendStudent;
 import com.techindna.anerti.repository.enums.LearningPath;
+import com.techindna.anerti.repository.enums.Level;
 import com.techindna.anerti.repository.enums.StudentStatus;
 import com.techindna.anerti.service.StudentService;
 import lombok.AllArgsConstructor;
@@ -26,15 +27,17 @@ public class StudentController {
   @GetMapping
   public ResponseEntity<StudentListResponse> listStudents(
       @RequestParam(required = false) String search,
+      @RequestParam(required = false) Level level,
       @RequestParam(required = false) LearningPath learningPath,
       @RequestParam(required = false) StudentStatus studentStatus,
+      @RequestParam(required = false) String groupRef,
       @RequestParam(required = false) String className,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size) {
     return ResponseEntity.status(HttpStatus.OK)
         .body(
             studentService.listStudents(
-                search, learningPath, studentStatus, className, page, size));
+                search, level, learningPath, studentStatus, groupRef, className, page, size));
   }
 
   @PostMapping

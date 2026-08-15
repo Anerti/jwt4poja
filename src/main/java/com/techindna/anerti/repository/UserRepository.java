@@ -40,18 +40,25 @@ public interface UserRepository extends JpaRepository<JUser, UUID> {
           OR LOWER(si.ref) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
           OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
           OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))
+          AND (CAST(:level AS string) IS NULL
+            OR CAST(si.level AS string) = :level)
           AND (CAST(:learningPath AS string) IS NULL
             OR CAST(si.learningPath AS string) = :learningPath)
           AND (CAST(:studentStatus AS string) IS NULL
             OR CAST(si.studentStatus AS string) = :studentStatus)
+          AND (:groupRef IS NULL OR :groupRef = ''
+            OR EXISTS (
+              SELECT 1 FROM JGroup g WHERE g.id = si.groupId AND g.ref = :groupRef))
           AND (:className IS NULL OR :className = ''
             OR EXISTS (
               SELECT 1 FROM JClass c WHERE c.id = si.classId AND c.name = :className))
       """)
   Page<JUser> searchStudents(
       @Param("search") String search,
+      @Param("level") String level,
       @Param("learningPath") String learningPath,
       @Param("studentStatus") String studentStatus,
+      @Param("groupRef") String groupRef,
       @Param("className") String className,
       @Param("role") UserRole role,
       Pageable pageable);
