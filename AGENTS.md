@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-**jwt4poja** (`com.techindna.anerti`, Gradle project `jwt4poja-962dc383`) — a POJA (poja.io) generated AWS-serverless Spring Boot 3.2 backend for a **grade-management system** serving a 3-year L2 program (`L2` — two learning paths: `EL` / `TN`, with shared `COMMON` courses). Currently **the auth slice, teacher provisioning, course management, group management and student provisioning are implemented**; the rest of the domain is the intended contract, captured in the OpenAPI spec and the Obsidian MCD.
+**jwt4poja** (`com.techindna.anerti`, Gradle project `jwt4poja-962dc383`) — a POJA (poja.io) generated AWS-serverless Spring Boot 3.2 backend for a **grade-management system** serving a 3-year L2 program (`L2` — two learning paths: `EL` / `TN`, with shared `COMMON` courses). Currently **the auth slice, teacher provisioning, course management, group management, student provisioning, teacher-course assignments and exam management are implemented**; the rest of the domain is the intended contract, captured in the OpenAPI spec and the Obsidian MCD.
 
 - **Stack:** Java 21, Spring Boot 3.2.2, Gradle 8.5 (wrapper), Lombok 1.18.30, JaCoCo 0.8.11; Spring Data JPA, PostgreSQL, Spring Data Redis, Spring Security (Argon2), Thymeleaf, jjwt 0.12, BouncyCastle.
 - **Deployment:** AWS Lambda + API Gateway, serverless via SAM. Async via EventBridge → SQS → Lambda worker; email via SES; reports stored on S3 and streamed to the client. CD triggers on push to `preprod` / `prod` branches (see `.github/workflows/cd-compute.yml`). Region: `eu-west-3`.
@@ -25,7 +25,7 @@ The intended product is a grade-management system. Authoritative contract: [`doc
 
 There is **no public registration**: an `ADMIN` provisions every account through `POST /students` / `POST /teachers`. Only `/auth/**` and the course catalog listing (`GET /courses`) are public.
 
-### Conceptual data model (9 tables, all in schema `jwt4poja_app`)
+### Conceptual data model (10 tables, all in schema `jwt4poja_app`)
 
 - `user` — shared identity (UUID pk, `username` / `email` unique, `password`, `firstName`, `lastName`, `role` enum, `createdAt`, `updatedAt`).
 - `teacher_extension` — 1-1 with `user` when `role = TEACHER` (`ref` unique, `teacherStatus` enum).
@@ -52,7 +52,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ## Current state
 
-**Auth + teacher provisioning, course management, group management and student provisioning are implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`), `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`), `group` (entity `JGroup` / `Group`, DTOs `GroupOutput` / `CreateGroupInput` / `GroupListResponse`, `POST /groups` + `GET /groups` + `DELETE /groups/{groupId}`), and `student_inheritance` (entity `JStudentInheritance`, DTOs `UserExtendStudent` / `StudentInheritance` / `CreateStudentInput`, and `POST /students`). `exam`, `grade`, `history`, etc. have no Java at all.
+**Auth + teacher provisioning, course management, group management, student provisioning, assignments and exam management are implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`), `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`), `group` (entity `JGroup` / `Group`, DTOs `GroupOutput` / `CreateGroupInput` / `GroupListResponse`, `POST /groups` + `GET /groups` + `DELETE /groups/{groupId}`), `student_inheritance` (entity `JStudentInheritance`, DTOs `UserExtendStudent` / `StudentInheritance` / `CreateStudentInput`, and `POST /students`), `teacher_course` (entity `JTeacherCourse`, DTOs `TeacherCourse` / `CreateTeacherCourseInput`, and `POST /teacher-courses`), and `exam` (entity `JExam`, DTOs `ExamOutput` / `CreateExamInput` / `ExamListResponse`, `POST /exams` + `GET /exams`). `grade`, `history`, etc. have no Java at all.
 
 ### Implemented endpoints (hand-written, no `@PojaGenerated`)
 
@@ -72,28 +72,36 @@ There is **no public registration**: an `ADMIN` provisions every account through
   - `POST /groups` — 201 `GroupOutput` (ADMIN-only); validates input, maps unique `ref` violations to 409.
   - `GET /groups` — 200 `GroupListResponse` (ADMIN + TEACHER); `search` substring on `ref`, exact `type` filter, `page`/`size` pagination.
   - `DELETE /groups/{groupId}` — 204 (ADMIN-only); 404 unknown id.
+- **Exams** — `endpoint/rest/controller/ExamController.java`:
+  - `POST /exams` — 201 `ExamOutput` (ADMIN + TEACHER); validates input, checks course exists, TEACHER must be assigned to the course (`requireAssignedToCourse`), rejects when the sum of `coefficient`s for the course/academic-year would exceed 1 (409).
+  - `GET /exams` — 200 `ExamListResponse` (ADMIN + TEACHER + STUDENT); `ref` (course-ref, partial match), exact `academicYear`, inclusive `startDate`/`endDate` filters, `page`/`size` pagination; ordered by `date`; TEACHER scoped to assigned courses via SQL `EXISTS` on `teacher_course`.
+- **Assignments** — `endpoint/rest/controller/TeacherCourseController.java`:
+  - `POST /teacher-courses` — 201 `TeacherCourse` (ADMIN-only); validates input, maps unique pair violations to 409.
 - **Health (POJA scaffold)** — `GET /ping`, `GET /health/email`, `GET /health/bucket`.
 
 ### Hand-written layer (all ported, none carry `@PojaGenerated`)
 
-- `endpoint/rest/controller/{AuthController, TeacherController, CourseController, StudentController, GroupController}`.
-- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/StudentService`, `service/GroupService`, `service/UserConflictHandler`, `service/PageRequestData` (page/size clamped to 1–100, defaults 1/10), `service/VerificationCodeStore` (Redis 15-min tokens).
-- `security/` — `SecurityConfig` (stateless; role enforcement via `requestMatchers(...).hasRole("ADMIN")`), `security/jwt/{JwtTokenProvider, JwtAuthenticationFilter}`.
-- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, StudentInheritanceRepository, CourseRepository, GroupRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse, JGroup}`.
-- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`), `mapper/StudentInheritanceMapper` (`CreateStudentInput` → `JStudentInheritance`, `JUser` → `UserExtendStudent`), `mapper/CourseMapper` (`CreateCourseInput` → `JCourse`, `JCourse` → `CourseOutput`), `mapper/GroupMapper` (`CreateGroupInput` → `JGroup`, `JGroup` → `GroupOutput`).
-- `validator/DataValidator`, `validator/UserValidator`, `validator/CourseValidator`.
+- `endpoint/rest/controller/{AuthController, TeacherController, CourseController, StudentController, GroupController, ExamController, TeacherCourseController}`.
+- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/StudentService`, `service/GroupService`, `service/ExamService`, `service/TeacherCourseService`, `service/UserConflictHandler`, `service/PageRequestData` (page/size clamped to 1–100, defaults 1/10), `service/VerificationCodeStore` (Redis 15-min tokens).
+- `security/` — `SecurityConfig` (stateless; role enforcement via `requestMatchers(...).hasRole("ADMIN")`), `security/jwt/{JwtTokenProvider, JwtAuthenticationFilter}`, `security/AccessRules` (`requireAssignedToCourse` guard for TEACHER-scoped writes).
+- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, StudentInheritanceRepository, CourseRepository, GroupRepository, ExamRepository, TeacherCourseRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse, JGroup, JClass, JExam, JTeacherCourse}`.
+- `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`), `mapper/StudentInheritanceMapper` (`CreateStudentInput` → `JStudentInheritance`, `JUser` → `UserExtendStudent`), `mapper/CourseMapper` (`CreateCourseInput` → `JCourse`, `JCourse` → `CourseOutput`), `mapper/GroupMapper` (`CreateGroupInput` → `JGroup`, `JGroup` → `GroupOutput`), `mapper/ExamMapper` (`CreateExamInput` → `JExam`, `JExam` → `ExamOutput`).
+- `validator/DataValidator`, `validator/UserValidator`, `validator/CourseValidator`, `validator/ExamValidator`.
 - `exception/ErrorBody`, `exception/GlobalExceptionHandler`, `exception/http/*` (BadRequest / Conflict / Forbidden / Gone / NotFound / Unauthorized / UnprocessableContent).
 - `entity/User`, `entity/Group` (domain records) and `repository/enums/{UserRole, TeacherStatus, StudentStatus, Level, LearningPath, CourseType}`. `UserRole` already matches the spec triple `ADMIN` / `TEACHER` / `STUDENT` (no legacy `CUSTOMER`).
-- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`, `CreateStudentInput`, `StudentInheritance`, `UserExtendStudent`, `CreateGroupInput`, `GroupOutput`, `GroupListResponse`, `Meta`, `StudentListResponse`, `TeacherListResponse`.
+- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`, `CreateStudentInput`, `StudentInheritance`, `UserExtendStudent`, `CreateGroupInput`, `GroupOutput`, `GroupListResponse`, `Meta`, `StudentListResponse`, `TeacherListResponse`, `CreateExamInput`, `ExamOutput`, `ExamListResponse`, `CreateTeacherCourseInput`, `TeacherCourse`.
 - `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService` (auth email pipeline).
 - Mail template `resources/templates/mail/login-verification.html`.
 
 ### Database state
 
-- `src/main/resources/db/migration/V1__init.sql` — schema `jwt4poja_app` with the spec role triple `(ADMIN, TEACHER, STUDENT)` and the `teacher_inheritance` / `student_inheritance` / `user` tables. Applied manually, not via Flyway. Still ahead of the code: `exam` / `grade` / `history` etc. exist only in `doc/mcd.canvas`, not in the DDL.
+- `src/main/resources/db/migration/V1__init.sql` — schema `jwt4poja_app` with the spec role triple `(ADMIN, TEACHER, STUDENT)` and the `teacher_inheritance` / `student_inheritance` / `user` tables. Applied manually, not via Flyway. Still ahead of the code: `grade` / `history` etc. exist only in `doc/mcd.canvas`, not in the DDL.
 - `src/main/resources/db/migration/V2__add_course.sql` — the `course` table (`ref` unique, `title`, `type` enum, `credits`) + its `course_type` enum.
 - `src/main/resources/db/migration/V3__add_group.sql` — the `"group"` table (`ref` unique, `type` enum) + its `group_type` enum.
-- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50. `test-course-init.sql` mirrors V2 and `test-group-init.sql` mirrors V3 for the Testcontainers test DB.
+- `src/main/resources/db/migration/V4__add_class.sql` — the `"class"` table (spec-side `class` / `student_class`); no endpoints yet.
+- `src/main/resources/db/migration/V5__add_teacher_course.sql` — the `teacher_course` table (`teacher_inheritance_id` FK, `course_id` FK, `assigned_at`; unique on the pair).
+- `src/main/resources/db/migration/V6__add_exam.sql` — the `exam` table (`course_id` FK ON DELETE CASCADE, `coefficient` numeric(10,2), `academic_year`, `date`).
+- `src/test/resources/test-init.sql` — mirrors V1 (same enums + tables); note its `user.username` is `VARCHAR(100)` vs V1's `VARCHAR(50)` — only the validator caps at 50. `test-course-init.sql` mirrors V2, `test-group-init.sql` mirrors V3, `test-class-init.sql` mirrors V4, `test-teacher-course-init.sql` mirrors V5 and `test-exam-init.sql` mirrors V6 for the Testcontainers test DB.
 
 ### Integration tests
 
@@ -104,12 +112,14 @@ There is **no public registration**: an `ADMIN` provisions every account through
 - `courses/PostCoursesIT`, `courses/GetCoursesIT`.
 - `students/PostStudentsIT`, `students/GetStudentsIT`.
 - `groups/PostGroupsIT`, `groups/GetGroupsIT`, `groups/DeleteGroupsIT`.
+- `assignments/PostTeacherCoursesIT`.
+- `exams/PostExamsIT`, `exams/GetExamsIT`.
 
-No ITs yet for exams / assignments / grades / reports, nor for `GET/PATCH /teachers/{teacherId}`, `GET/PATCH /students/{studentId}`, `GET/PATCH /courses/{courseId}`, or `GET/PATCH /groups/{groupId}`.
+No ITs yet for grades / reports, nor for `GET/PATCH /teachers/{teacherId}`, `GET/PATCH /students/{studentId}`, `GET/PATCH /courses/{courseId}`, `GET/PATCH /groups/{groupId}`, or the remaining exam paths (`GET/PATCH/DELETE /exams/{examId}`).
 
 ### Out of scope right now (spec only, no Java)
 
-Everything under `/exams`, `/teacher-courses`, `/grades`, `/grade-reports`, `/graduations`, plus `GET/PATCH /students/{studentId}`, `GET/PATCH /teachers/{teacherId}`, the remaining course paths (`GET/PATCH /courses/{courseId}`) and the remaining group paths (`GET/PATCH /groups/{groupId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
+Everything under `/grades`, `/grade-reports`, `/graduations`, plus `GET/PATCH /students/{studentId}`, `GET/PATCH /teachers/{teacherId}`, the remaining course paths (`GET/PATCH /courses/{courseId}`), the remaining group paths (`GET/PATCH /groups/{groupId}`) and the remaining exam paths (`GET/PATCH/DELETE /exams/{examId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
 
 ## Commands
 
@@ -123,7 +133,7 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 
 - `gradlew` is committed **without the exec bit** — use `sh gradlew …` locally (CI does `chmod +x` itself).
 - Java must be ≤ 21 — Gradle rejects newer JDKs. Use the JDK export above.
-- `sh gradlew test` needs **Docker + Testcontainers** (`FacadeIT` base class); CI runs `./gradlew test` on Java 21 corretto. The test env spins up `postgres:16-alpine` + `redis:7-alpine` via `conf/EnvConf`. Any `test` invocation is finalized by `jacocoTestCoverageVerification` + `jacocoTestReport` (LINE coverage, minimum 0.85; full suite currently ~87% — a targeted `--tests` run alone does NOT meet the gate).
+- `sh gradlew test` needs **Docker + Testcontainers** (`FacadeIT` base class); CI runs `./gradlew test` on Java 21 corretto. The test env spins up `postgres:16-alpine` + `redis:7-alpine` via `conf/EnvConf`. Any `test` invocation is finalized by `jacocoTestCoverageVerification` + `jacocoTestReport` (LINE coverage, minimum 0.85; full suite currently ~94% — a targeted `--tests` run alone does NOT meet the gate).
 - `format.sh` needs `java` on PATH (same JDK export).
 
 ## Conventions
@@ -146,6 +156,6 @@ sh gradlew test --tests "com.techindna.anerti.conf.*"                           
 
 ## Git
 
-- Branches: `post-student-groups` (current work branch), `get-courses` (course management), `post-teachers` (teacher provisioning), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
+- Branches: `get-exams` (current work branch), `post-student-groups` (student provisioning), `get-courses` (course management), `post-teachers` (teacher provisioning), `preprod` (deployment branch — pushes trigger CD via the Poja API), `origin/preprod` is the remote default.
 - History: Poja auto-commits (`poja: deployment ID: …`). Hand-written work follows short conventional commits (`feat:` / `docs:` / `build:` / `refactor:` / `test:` / `chore:`), typically one per file; multi-file endpoint features may bundle in one `feat:` commit.
 - Don't commit, push, or rewrite history unless asked.

@@ -1,7 +1,9 @@
 package com.techindna.anerti.service;
 
 import com.techindna.anerti.dto.CreateExamInput;
+import com.techindna.anerti.dto.ExamListResponse;
 import com.techindna.anerti.dto.ExamOutput;
+import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.exception.http.ConflictException;
 import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.exception.http.UnauthorizedException;
@@ -10,14 +12,19 @@ import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.CourseRepository;
 import com.techindna.anerti.repository.ExamRepository;
 import com.techindna.anerti.repository.TeacherCourseRepository;
+import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JExam;
 import com.techindna.anerti.repository.model.JTeacherInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.AccessRules;
 import com.techindna.anerti.validator.ExamValidator;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +42,31 @@ public class ExamService {
   private final AccessRules accessRules;
   private final ExamValidator examValidator;
   private final ExamMapper examMapper;
+
+  @Transactional(readOnly = true)
+  public ExamListResponse listExams(
+      String ref, String academicYear, Instant startDate, Instant endDate, int page, int size) {
+    examValidator.validateListFilters(ref, academicYear);
+    JUser currentUser = currentUser();
+
+    PageRequestData p = PageRequestData.of(page, size, Sort.unsorted());
+
+    UUID teacherInheritanceId = null;
+    if (currentUser.getRole() == UserRole.TEACHER) {
+      JTeacherInheritance inheritance = currentUser.getTeacherInheritance();
+      if (inheritance == null) {
+        return new ExamListResponse(List.of(), new Meta(p.page(), p.size(), 0));
+      }
+      teacherInheritanceId = inheritance.getId();
+    }
+
+    Page<JExam> jExams =
+        examRepository.search(
+            ref, academicYear, startDate, endDate, teacherInheritanceId, p.pageable());
+
+    List<ExamOutput> exams = jExams.getContent().stream().map(examMapper::toDto).toList();
+    return new ExamListResponse(exams, new Meta(p.page(), p.size(), jExams.getTotalElements()));
+  }
 
   @Transactional
   public ExamOutput createExam(CreateExamInput request) {

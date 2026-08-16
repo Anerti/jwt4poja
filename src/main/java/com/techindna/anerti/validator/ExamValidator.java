@@ -21,4 +21,15 @@ public class ExamValidator {
       throw new UnprocessableContentException("date is required and cannot be blank");
     }
   }
+
+  public void validateListFilters(String ref, String academicYear) {
+    if (ref != null && !ref.isBlank()) {
+      dataValidator.checkStringLength("ref", ref, 10);
+      dataValidator.validateRef(ref);
+    }
+    if (academicYear != null && !academicYear.isBlank()) {
+      dataValidator.checkStringLength("academicYear", academicYear, 10);
+      dataValidator.validateAcademicYear(academicYear);
+    }
+  }
 }
