@@ -245,8 +245,9 @@ paths:
       summary: Create an exam (ADMIN, TEACHER)
       description: |
         Creates an exam for a course and an academic year. The `coefficient` is
-        indicative (e.g. `0.5`, `0.2`, `1/3`); the coefficients of all exams of
-        a course must sum to 1. ADMIN can create an exam for any course; a
+        a fixed-point decimal (`numeric(10,2)`, e.g. `0.5`, `0.2`, `0.33`); the
+        coefficients of all exams of a course must sum to 1. ADMIN can create an
+        exam for any course; a
         TEACHER can only create exams for courses assigned to them.
       operationId: createExam
       security:
@@ -300,8 +301,10 @@ paths:
         - name: academicYear
           in: query
           required: false
+          description: Exact match on the academic year (e.g. `2024-2025`)
           schema:
-            type: integer
+            type: string
+            maxLength: 10
         - name: startDate
           in: query
           required: false
@@ -1652,10 +1655,12 @@ components:
         coefficient:
           type: number
           exclusiveMinimum: 0
-          description: Indicative weight of the exam. The coefficients of all exams of a course must sum to 1.
+          multipleOf: 0.01
+          description: Fixed-point decimal weight of the exam (`numeric(10,2)`). The coefficients of all exams of a course must sum to 1.
         academicYear:
-          type: integer
-          description: Academic year the exam belongs to (e.g. `2023`)
+          type: string
+          maxLength: 10
+          description: Academic year the exam belongs to, e.g. `2024-2025`
         date:
           type: string
           format: date-time
@@ -1671,7 +1676,7 @@ components:
         id: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
         courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
         coefficient: 0.5
-        academicYear: 2023
+        academicYear: '2024-2025'
         date: 2024-01-15T09:00:00Z
         createdAt: 2023-12-01T10:00:00Z
         updatedAt: null
@@ -1685,10 +1690,12 @@ components:
         coefficient:
           type: number
           exclusiveMinimum: 0
-          description: Indicative weight of the exam. The coefficients of all exams of a course must sum to 1.
+          multipleOf: 0.01
+          description: Fixed-point decimal weight of the exam (`numeric(10,2)`). The coefficients of all exams of a course must sum to 1.
         academicYear:
-          type: integer
-          description: Academic year the exam belongs to (e.g. `2023`)
+          type: string
+          maxLength: 10
+          description: Academic year the exam belongs to, e.g. `2024-2025`
         date:
           type: string
           format: date-time
@@ -1696,7 +1703,7 @@ components:
       example:
         courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
         coefficient: 0.5
-        academicYear: 2023
+        academicYear: '2024-2025'
         date: 2024-01-15T09:00:00Z
     UpdateExamInput:
       type: object
@@ -1708,8 +1715,10 @@ components:
         coefficient:
           type: number
           exclusiveMinimum: 0
+          multipleOf: 0.01
         academicYear:
-          type: integer
+          type: string
+          maxLength: 10
         date:
           type: string
           format: date-time
