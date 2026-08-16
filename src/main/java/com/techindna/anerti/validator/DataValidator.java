@@ -1,6 +1,8 @@
 package com.techindna.anerti.validator;
 
+import com.techindna.anerti.exception.http.BadRequestException;
 import com.techindna.anerti.exception.http.UnprocessableContentException;
+import java.math.BigDecimal;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +16,7 @@ public class DataValidator {
   private static final Pattern SEARCH_FORMAT = Pattern.compile("^[a-zA-Z0-9_@.'éèê -]+$");
   private static final Pattern REF_FORMAT = Pattern.compile("^[A-Za-z0-9-]+$");
   private static final Pattern TITLE_FORMAT = Pattern.compile("^[A-Za-z0-9èéê -]+$");
+  private static final Pattern ACADEMIC_YEAR_FORMAT = Pattern.compile("^\\d{4}-\\d{4}$");
 
   public void checkNullData(String field, String value) {
     if (value == null || value.isBlank()) {
@@ -39,6 +42,31 @@ public class DataValidator {
               "Title %s is invalid, it may only contain letters, numbers, spaces, and the symbols -"
                   + " è é ê",
               value));
+    }
+  }
+
+  public void validateCoefficient(BigDecimal coefficient) {
+    if (coefficient == null) {
+      throw new BadRequestException("coefficient is required and cannot be blank");
+    }
+    if (coefficient.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new BadRequestException("coefficient must be greater than 0");
+    }
+    if (coefficient.compareTo(BigDecimal.ONE) > 0) {
+      throw new UnprocessableContentException("coefficient must not exceed 1");
+    }
+    if (coefficient.stripTrailingZeros().scale() > 2) {
+      throw new UnprocessableContentException("coefficient must have at most 2 decimal places");
+    }
+  }
+
+  public void validateAcademicYear(String academicYear) {
+    checkNullData("academicYear", academicYear);
+    checkStringLength("academicYear", academicYear, 10);
+
+    if (!ACADEMIC_YEAR_FORMAT.matcher(academicYear.strip()).matches()) {
+      throw new UnprocessableContentException(
+          "academicYear is invalid, the format must be YYYY-YYYY");
     }
   }
 

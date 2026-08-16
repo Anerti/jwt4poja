@@ -310,7 +310,7 @@ class PostExamsIT extends FacadeIT {
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(response.getBody())
-        .contains("academicYear is invalid, it must follow the format YYYY-YYYY");
+        .contains("academicYear is invalid, the format must be YYYY-YYYY");
   }
 
   @Test
