@@ -18,7 +18,7 @@ tags:
   - name: courses
     description: Courses and course catalog (ADMIN manages, public catalog listing)
   - name: exams
-    description: Exams per course and academic year (ADMIN manages, TEACHER reads)
+    description: Exams per course and academic year (ADMIN manages, TEACHER and STUDENT read)
   - name: teachers
     description: Teacher accounts and teacher inheritance records (ADMIN)
   - name: students
@@ -281,12 +281,12 @@ paths:
           $ref: '#/components/responses/InternalServerError'
     get:
       tags: [exams]
-      summary: List exams (ADMIN, TEACHER)
+      summary: List exams (ADMIN, TEACHER, STUDENT)
       description: |
         Lists exams ordered by `date`. `ref` (course ref, partial match),
         `academicYear` (exact match), `startDate` and `endDate` (exam `date`
-        range) filters. ADMIN sees all exams; a TEACHER only sees exams of
-        courses assigned to them.
+        range) filters. ADMIN and STUDENT see all exams; a TEACHER only sees
+        exams of courses assigned to them.
       operationId: listExams
       security:
         - bearerAuth: []
