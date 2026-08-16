@@ -240,26 +240,26 @@ class PostExamsIT extends FacadeIT {
   }
 
   @Test
-  void null_coefficient_is_unprocessable() {
+  void null_coefficient_is_bad_request() {
     JCourse course = saveCourse();
 
     ResponseEntity<String> response =
         postExamError(
             validRequest(course.getId(), null, "2024-2025", "2024-01-15T09:00:00Z"), adminToken());
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("coefficient is required and cannot be blank");
   }
 
   @Test
-  void zero_coefficient_is_unprocessable() {
+  void zero_coefficient_is_bad_request() {
     JCourse course = saveCourse();
 
     ResponseEntity<String> response =
         postExamError(
             validRequest(course.getId(), "0", "2024-2025", "2024-01-15T09:00:00Z"), adminToken());
 
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     assertThat(response.getBody()).contains("coefficient must be greater than 0");
   }
 
