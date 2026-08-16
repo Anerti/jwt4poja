@@ -8,9 +8,14 @@ import com.techindna.anerti.dto.ExamOutput;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.CourseRepository;
 import com.techindna.anerti.repository.ExamRepository;
+import com.techindna.anerti.repository.TeacherCourseRepository;
+import com.techindna.anerti.repository.TeacherInheritanceRepository;
+import com.techindna.anerti.repository.enums.TeacherStatus;
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JCourse;
 import com.techindna.anerti.repository.model.JExam;
+import com.techindna.anerti.repository.model.JTeacherCourse;
+import com.techindna.anerti.repository.model.JTeacherInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.jwt.JwtTokenProvider;
 import java.math.BigDecimal;
@@ -37,6 +42,8 @@ class PostExamsIT extends FacadeIT {
   private final AuthRepository authRepository;
   private final CourseRepository courseRepository;
   private final ExamRepository examRepository;
+  private final TeacherInheritanceRepository teacherInheritanceRepository;
+  private final TeacherCourseRepository teacherCourseRepository;
   private final JwtTokenProvider jwtTokenProvider;
   private final PasswordEncoder passwordEncoder;
 
@@ -45,12 +52,16 @@ class PostExamsIT extends FacadeIT {
       AuthRepository authRepository,
       CourseRepository courseRepository,
       ExamRepository examRepository,
+      TeacherInheritanceRepository teacherInheritanceRepository,
+      TeacherCourseRepository teacherCourseRepository,
       JwtTokenProvider jwtTokenProvider,
       PasswordEncoder passwordEncoder) {
     this.restTemplate = restTemplate;
     this.authRepository = authRepository;
     this.courseRepository = courseRepository;
     this.examRepository = examRepository;
+    this.teacherInheritanceRepository = teacherInheritanceRepository;
+    this.teacherCourseRepository = teacherCourseRepository;
     this.jwtTokenProvider = jwtTokenProvider;
     this.passwordEncoder = passwordEncoder;
     restTemplate.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
@@ -59,8 +70,10 @@ class PostExamsIT extends FacadeIT {
   @BeforeEach
   void clean() {
     examRepository.deleteAll();
+    teacherCourseRepository.deleteAll();
     courseRepository.deleteAll();
     authRepository.deleteAll();
+    teacherInheritanceRepository.deleteAll();
   }
 
   @Test
@@ -94,11 +107,39 @@ class PostExamsIT extends FacadeIT {
     ResponseEntity<ExamOutput> response =
         postExam(
             validRequest(course.getId(), "0.5", "2024-2025", "2024-01-15T09:00:00Z"),
-            teacherToken());
+            teacherTokenWithCourse(course));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
     assertThat(response.getBody()).isNotNull();
     assertThat(response.getBody().courseId()).isEqualTo(course.getId());
+  }
+
+  @Test
+  void teacher_without_assignment_is_forbidden() {
+    JCourse course = saveCourse();
+
+    ResponseEntity<String> response =
+        postExamError(
+            validRequest(course.getId(), "0.5", "2024-2025", "2024-01-15T09:00:00Z"),
+            teacherTokenWithoutCourse());
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(response.getBody()).contains("Cannot create exam for course");
+  }
+
+  @Test
+  void teacher_assigned_to_another_course_is_forbidden() {
+    JCourse course = saveCourse();
+    JCourse otherCourse =
+        courseRepository.save(JCourse.builder().ref("PRJ1").title("Project").credits(6).build());
+
+    ResponseEntity<String> response =
+        postExamError(
+            validRequest(course.getId(), "0.5", "2024-2025", "2024-01-15T09:00:00Z"),
+            teacherTokenWithCourse(otherCourse));
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    assertThat(response.getBody()).contains("Cannot create exam for course");
   }
 
   @Test
@@ -341,8 +382,38 @@ class PostExamsIT extends FacadeIT {
     return jwtTokenProvider.generateToken(admin.getId().toString(), admin.getRole().name());
   }
 
-  private String teacherToken() {
-    JUser teacher = saveUser("terry_teacher", "terry.teacher@hacheuil.edu", UserRole.TEACHER);
+  private JUser saveTeacherUser(JTeacherInheritance inheritance) {
+    return authRepository.save(
+        JUser.builder()
+            .username("terry_teacher")
+            .password(passwordEncoder.encode("StrongPass12!"))
+            .firstName("Some")
+            .lastName("User")
+            .email("terry.teacher@hacheuil.edu")
+            .role(UserRole.TEACHER)
+            .teacherInheritance(inheritance)
+            .build());
+  }
+
+  private String teacherTokenWithCourse(JCourse course) {
+    JTeacherInheritance inheritance =
+        teacherInheritanceRepository.save(
+            JTeacherInheritance.builder().ref("T001").teacherStatus(TeacherStatus.ACTIVE).build());
+    teacherCourseRepository.save(
+        JTeacherCourse.builder()
+            .teacherInheritance(inheritance)
+            .courseId(course.getId())
+            .assignedAt(Instant.parse("2023-09-01T08:00:00Z"))
+            .build());
+    JUser teacher = saveTeacherUser(inheritance);
+    return jwtTokenProvider.generateToken(teacher.getId().toString(), teacher.getRole().name());
+  }
+
+  private String teacherTokenWithoutCourse() {
+    JTeacherInheritance inheritance =
+        teacherInheritanceRepository.save(
+            JTeacherInheritance.builder().ref("T001").teacherStatus(TeacherStatus.ACTIVE).build());
+    JUser teacher = saveTeacherUser(inheritance);
     return jwtTokenProvider.generateToken(teacher.getId().toString(), teacher.getRole().name());
   }
 
