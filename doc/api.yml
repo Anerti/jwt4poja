@@ -28,7 +28,7 @@ tags:
   - name: assignments
     description: Course-to-teacher assignments per year (ADMIN)
   - name: grades
-    description: Grades and grade history (ADMIN, TEACHER for own courses, STUDENT for own grades)
+    description: Grades (ADMIN, TEACHER for own courses, STUDENT for own grades)
   - name: reports
     description: Annual grade reports by email and graduation lists
 paths:
@@ -1098,9 +1098,8 @@ paths:
       summary: Record a grade (ADMIN, TEACHER)
       description: |
         Records the grade of a student for an exam. ADMIN can grade any exam; a
-        TEACHER can only grade exams of courses assigned to them. The grade is
-        stored as the initial `history` entry (`grade` is the current value).
-        A student can only have one grade per exam.
+        TEACHER can only grade exams of courses assigned to them. A student can
+        only have one grade per exam.
       operationId: createGrade
       security:
         - bearerAuth: []
@@ -1131,21 +1130,22 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /grades/{studentId}:
+  /grades/{studentInheritanceId}:
     get:
       tags: [grades]
       summary: List a student's grades
       description: |
-        Lists the grades of the student identified by `studentId`. `examId` and
-        `academicYear` are exact-match filters. ADMIN and TEACHER can list any
-        student's grades (a TEACHER only sees grades of exams of courses
-        assigned to them); a STUDENT can only list their own grades — the path
-        `studentId` is forced to the authenticated student.
+        Lists the grades of the student inheritance record identified by
+        `studentInheritanceId`. `examId` and `academicYear` are exact-match
+        filters. ADMIN and TEACHER can list any student's grades (a TEACHER
+        only sees grades of exams of courses assigned to them); a STUDENT can
+        only list their own grades — the path `studentInheritanceId` is forced
+        to the authenticated student.
       operationId: listGrades
       security:
         - bearerAuth: []
       parameters:
-        - name: studentId
+        - name: studentInheritanceId
           in: path
           required: true
           schema:
@@ -1160,8 +1160,10 @@ paths:
         - name: academicYear
           in: query
           required: false
+          description: Exact match on the exam's academic year (e.g. `2024-2025`)
           schema:
-            type: integer
+            type: string
+            maxLength: 10
         - name: page
           in: query
           required: false
@@ -1198,10 +1200,9 @@ paths:
       tags: [grades]
       summary: Correct a grade (ADMIN, TEACHER)
       description: |
-        Appends a new `history` entry with the corrected value and a mandatory
-        `description` (e.g. "transcription error"). The current grade becomes
-        this latest entry. A TEACHER can only correct grades of exams of courses
-        assigned to them.
+        Corrects a grade in place: replaces the grade `value` and requires a
+        `description` (e.g. "transcription error"). A TEACHER can only correct
+        grades of exams of courses assigned to them.
       operationId: updateGrade
       security:
         - bearerAuth: []
@@ -1235,39 +1236,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /grades/{gradeId}/history:
-    get:
-      tags: [grades]
-      summary: Get a grade's correction history
-      description: |
-        Chronological history of the grade (initial entry then corrections).
-        ADMIN sees any history; a TEACHER only for exams of courses assigned to
-        them; a STUDENT only their own grades' history.
-      operationId: getGradeHistory
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: gradeId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The grade's history
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HistoryListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /grade-reports:
@@ -2098,59 +2066,61 @@ components:
         assignedAt: 2023-09-01T08:00:00Z
     Grade:
       type: object
-      required: [id, studentId, examId, grade, createdAt]
+      required: [id, studentInheritanceId, examId, value, description, createdAt]
       properties:
         id:
           type: string
           format: uuid
-        studentId:
+        studentInheritanceId:
           type: string
           format: uuid
         examId:
           type: string
           format: uuid
-        grade:
+        value:
           type: number
           minimum: 0
           maximum: 20
-          description: Current value (most recent `history` entry)
+          description: Current grade value
+        description:
+          type: string
         createdAt:
           type: string
           format: date-time
       example:
         id: 0a8b9c0d-1e2f-4a3b-4c5d-6e7f8a9b0c1d
-        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
-        grade: 14.5
+        value: 14.5
+        description: Final exam
         createdAt: 2024-01-20T10:00:00Z
     CreateGradeInput:
       type: object
-      required: [studentId, examId, grade]
+      required: [studentInheritanceId, examId, value, description]
       properties:
-        studentId:
+        studentInheritanceId:
           type: string
           format: uuid
         examId:
           type: string
           format: uuid
-        grade:
+        value:
           type: number
           minimum: 0
           maximum: 20
         description:
           type: string
-          description: Initial history note (optional)
       example:
-        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
-        grade: 14.5
+        value: 14.5
         description: Final exam
     UpdateGradeInput:
       type: object
-      required: [grade, description]
-      description: Correction — appends a new `history` entry.
+      required: [value, description]
+      description: Correction — replaces the grade's `value` and `description`.
       properties:
-        grade:
+        value:
           type: number
           minimum: 0
           maximum: 20
@@ -2158,27 +2128,8 @@ components:
           type: string
           description: Mandatory reason for the correction (e.g. "transcription error")
       example:
-        grade: 15
+        value: 15
         description: Transcription error corrected
-    HistoryEntry:
-      type: object
-      required: [id, grade, description, createdAt]
-      properties:
-        id:
-          type: string
-          format: uuid
-        grade:
-          type: number
-        description:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-      example:
-        id: 1b9c0d1e-2f3a-4b4c-5d6e-7f8a9b0c1d2e
-        grade: 15
-        description: Transcription error corrected
-        createdAt: 2024-01-21T09:30:00Z
     GradeReportRequest:
       type: object
       required: [studentId, academicYear]
@@ -2325,14 +2276,6 @@ components:
             $ref: '#/components/schemas/Grade'
         meta:
           $ref: '#/components/schemas/Meta'
-    HistoryListResponse:
-      type: object
-      required: [data]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/HistoryEntry'
     ErrorBody:
       type: object
       required: [status, error, message, timestamp]
