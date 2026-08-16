@@ -55,8 +55,8 @@ public class ExamService {
 
     if (sum.add(request.coefficient()).compareTo(ONE) > 0) {
       throw new ConflictException(
-          "Coefficients of the exams of course %s for academic year %s already sum to %s, adding %s"
-              .formatted(courseId, academicYear, sum, request.coefficient()));
+          "Coefficients of the exam of course %s for academic year %s already sum to %s"
+              .formatted(courseId, academicYear, sum));
     }
 
     JExam saved = examRepository.saveAndFlush(examMapper.toRepository(request));
