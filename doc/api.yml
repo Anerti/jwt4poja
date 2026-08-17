@@ -1251,6 +1251,65 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /grades/compute/{studentInheritanceId}:
+    get:
+      tags: [grades]
+      summary: Compute the general average of a student
+      description: |
+        Computes the general weighted average of the student identified by
+        `studentInheritanceId` across all courses. For each course, the most
+        recent grade per exam (latest `createdAt`) is taken, the per-course
+        weighted average is computed as `Σ (grade.value × exam.coefficient)`
+        (coefficients of a course sum to 1), then the general average is:
+
+            generalAverage = Σ (courseWeightedAverage × course.credits)
+                             ─────────────────────────────────────────
+                                        Σ course.credits
+
+        An optional `academicYear` query parameter restricts the calculation
+        to exams of that year. If omitted, all academic years are included.
+
+        Role-based visibility:
+        - ADMIN can always compute.
+        - TEACHER can only compute for students whose graded exams belong to
+          courses assigned to them.
+        - STUDENT can only compute their own average.
+
+        Returns 404 when the student does not exist.
+      operationId: computeGeneralAverage
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentInheritanceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: academicYear
+          in: query
+          required: false
+          description: Exact match on the exam's academic year (e.g. `2024-2025`). Omit to include all years.
+          schema:
+            type: string
+            maxLength: 10
+      responses:
+        '200':
+          description: General weighted average
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentGeneralAverage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /grade-reports:
     post:
       tags: [reports]
@@ -2153,6 +2212,46 @@ components:
         studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         courseRef: EP1
         weightedAverage: 14.25
+    StudentGeneralAverage:
+      type: object
+      required: [studentInheritanceId, generalAverage, totalCredits]
+      properties:
+        studentInheritanceId:
+          type: string
+          format: uuid
+        academicYear:
+          type: string
+          maxLength: 10
+          nullable: true
+          description: The academic year filter that was applied, or null if all years were included.
+        generalAverage:
+          type: number
+          minimum: 0
+          maximum: 20
+          multipleOf: 0.01
+          description: >-
+            Σ (courseWeightedAverage × course.credits) / Σ course.credits.
+            Each courseWeightedAverage is Σ (grade.value × exam.coefficient)
+            over all graded exams of that course (coefficients sum to 1).
+        totalCredits:
+          type: integer
+          minimum: 0
+          description: Sum of credits of all courses that contributed to the average.
+        gradedCourses:
+          type: integer
+          minimum: 0
+          description: Number of courses with at least one grade.
+        totalCourses:
+          type: integer
+          minimum: 0
+          description: Total number of courses in the scope (with or without grades).
+      example:
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        academicYear: '2024-2025'
+        generalAverage: 14.25
+        totalCredits: 30
+        gradedCourses: 5
+        totalCourses: 6
     GradeReportRequest:
       type: object
       required: [studentId, academicYear]
