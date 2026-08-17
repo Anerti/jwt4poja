@@ -31,6 +31,8 @@ tags:
     description: Course-to-teacher assignments per year (ADMIN)
   - name: grades
     description: Grades (ADMIN, TEACHER for own courses, STUDENT for own grades)
+  - name: reports
+    description: Class rankings, general averages and downloadable reports (ADMIN, TEACHER)
 paths:
   /auth/login:
     post:
@@ -1120,9 +1122,9 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /classes/{classId}/ranking:
+  /reports/classes/{classId}/ranking:
     get:
-      tags: [classes]
+      tags: [reports]
       summary: Ranked list of students in a class (ADMIN, TEACHER)
       description: |
         Returns every student enrolled in the class identified by `classId`,
@@ -1137,7 +1139,7 @@ paths:
         - TEACHER can rank classes that contain at least one student they
           teach (i.e. the student has a grade on an exam of a course
           assigned to the teacher).
-      operationId: listClassRanking
+      operationId: getClassRanking
       security:
         - bearerAuth: []
       parameters:
@@ -1162,14 +1164,14 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /classes/{classId}/ranking/download:
+  /reports/classes/{classId}/ranking/download:
     get:
-      tags: [classes]
+      tags: [reports]
       summary: Download the class ranking as XLSX
       description: |
-        Same ranked students as `GET /classes/{classId}/ranking`, exported as
-        an XLSX workbook stored on S3 and streamed to the client. Columns:
-        rank, student ref, first name, last name, general average.
+        Same ranked students as `GET /reports/classes/{classId}/ranking`,
+        exported as an XLSX workbook stored on S3 and streamed to the client.
+        Columns: rank, student ref, first name, last name, general average.
       operationId: downloadClassRanking
       security:
         - bearerAuth: []
@@ -1472,9 +1474,9 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /grades/compute/{studentInheritanceId}:
+  /reports/students/{studentInheritanceId}/average:
     get:
-      tags: [grades]
+      tags: [reports]
       summary: Compute the general average of a student
       description: |
         Computes the general weighted average of the student identified by
@@ -1497,7 +1499,7 @@ paths:
         - STUDENT can only compute their own average.
 
         Returns 404 when the student does not exist.
-      operationId: computeGeneralAverage
+      operationId: getStudentAverage
       security:
         - bearerAuth: []
       parameters:
