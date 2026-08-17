@@ -7,6 +7,7 @@ import com.techindna.anerti.dto.CreateStudentInput;
 import com.techindna.anerti.dto.UserExtendStudent;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.ClassRepository;
+import com.techindna.anerti.repository.GradeRepository;
 import com.techindna.anerti.repository.GroupRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.enums.LearningPath;
@@ -40,6 +41,7 @@ class PostStudentsIT extends FacadeIT {
   private final TestRestTemplate restTemplate;
   private final AuthRepository authRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
+  private final GradeRepository gradeRepository;
   private final ClassRepository classRepository;
   private final GroupRepository groupRepository;
   private final JwtTokenProvider jwtTokenProvider;
@@ -49,6 +51,7 @@ class PostStudentsIT extends FacadeIT {
       TestRestTemplate restTemplate,
       AuthRepository authRepository,
       StudentInheritanceRepository studentInheritanceRepository,
+      GradeRepository gradeRepository,
       ClassRepository classRepository,
       GroupRepository groupRepository,
       JwtTokenProvider jwtTokenProvider,
@@ -56,6 +59,7 @@ class PostStudentsIT extends FacadeIT {
     this.restTemplate = restTemplate;
     this.authRepository = authRepository;
     this.studentInheritanceRepository = studentInheritanceRepository;
+    this.gradeRepository = gradeRepository;
     this.classRepository = classRepository;
     this.groupRepository = groupRepository;
     this.jwtTokenProvider = jwtTokenProvider;
@@ -65,6 +69,7 @@ class PostStudentsIT extends FacadeIT {
 
   @BeforeEach
   void clean() {
+    gradeRepository.deleteAll();
     authRepository.deleteAll();
     studentInheritanceRepository.deleteAll();
     classRepository.deleteAll();
