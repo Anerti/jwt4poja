@@ -47,3 +47,7 @@ out/
 
 ### Obsidian ###
 .obsidian/
+
+### Runtime logs ###
+bootRun.err
+bootRun.log
