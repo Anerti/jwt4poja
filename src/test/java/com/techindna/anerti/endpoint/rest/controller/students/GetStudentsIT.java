@@ -7,6 +7,8 @@ import com.techindna.anerti.dto.StudentListResponse;
 import com.techindna.anerti.dto.UserExtendStudent;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.ClassRepository;
+import com.techindna.anerti.repository.ExamRepository;
+import com.techindna.anerti.repository.GradeRepository;
 import com.techindna.anerti.repository.GroupRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.enums.LearningPath;
@@ -41,6 +43,8 @@ class GetStudentsIT extends FacadeIT {
   private final StudentInheritanceRepository studentInheritanceRepository;
   private final ClassRepository classRepository;
   private final GroupRepository groupRepository;
+  private final GradeRepository gradeRepository;
+  private final ExamRepository examRepository;
   private final JwtTokenProvider jwtTokenProvider;
   private final PasswordEncoder passwordEncoder;
 
@@ -50,6 +54,8 @@ class GetStudentsIT extends FacadeIT {
       StudentInheritanceRepository studentInheritanceRepository,
       ClassRepository classRepository,
       GroupRepository groupRepository,
+      GradeRepository gradeRepository,
+      ExamRepository examRepository,
       JwtTokenProvider jwtTokenProvider,
       PasswordEncoder passwordEncoder) {
     this.restTemplate = restTemplate;
@@ -57,6 +63,8 @@ class GetStudentsIT extends FacadeIT {
     this.studentInheritanceRepository = studentInheritanceRepository;
     this.classRepository = classRepository;
     this.groupRepository = groupRepository;
+    this.gradeRepository = gradeRepository;
+    this.examRepository = examRepository;
     this.jwtTokenProvider = jwtTokenProvider;
     this.passwordEncoder = passwordEncoder;
     restTemplate.getRestTemplate().setRequestFactory(new JdkClientHttpRequestFactory());
@@ -64,6 +72,8 @@ class GetStudentsIT extends FacadeIT {
 
   @BeforeEach
   void clean() {
+    gradeRepository.deleteAll();
+    examRepository.deleteAll();
     authRepository.deleteAll();
     studentInheritanceRepository.deleteAll();
     classRepository.deleteAll();

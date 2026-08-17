@@ -1,5 +1,6 @@
 package com.techindna.anerti.service;
 
+import com.techindna.anerti.dto.CourseGradeOutput;
 import com.techindna.anerti.dto.CreateGradeInput;
 import com.techindna.anerti.dto.GradeListResponse;
 import com.techindna.anerti.dto.GradeOutput;
@@ -9,11 +10,13 @@ import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.exception.http.UnauthorizedException;
 import com.techindna.anerti.mapper.GradeMapper;
 import com.techindna.anerti.repository.AuthRepository;
+import com.techindna.anerti.repository.CourseRepository;
 import com.techindna.anerti.repository.ExamRepository;
 import com.techindna.anerti.repository.GradeRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.TeacherCourseRepository;
 import com.techindna.anerti.repository.enums.UserRole;
+import com.techindna.anerti.repository.model.JCourse;
 import com.techindna.anerti.repository.model.JExam;
 import com.techindna.anerti.repository.model.JGrade;
 import com.techindna.anerti.repository.model.JStudentInheritance;
@@ -21,6 +24,7 @@ import com.techindna.anerti.repository.model.JTeacherInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.security.AccessRules;
 import com.techindna.anerti.validator.GradeValidator;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -36,6 +40,7 @@ public class GradeService {
 
   private final GradeRepository gradeRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
+  private final CourseRepository courseRepository;
   private final ExamRepository examRepository;
   private final TeacherCourseRepository teacherCourseRepository;
   private final AuthRepository authRepository;
@@ -106,6 +111,37 @@ public class GradeService {
     return gradeMapper.toDto(saved);
   }
 
+  @Transactional(readOnly = true)
+  public CourseGradeOutput computeCourseGrade(UUID studentInheritanceId, String courseRef) {
+    gradeValidator.validateCourseRef(courseRef);
+
+    studentInheritanceRepository
+        .findById(studentInheritanceId)
+        .orElseThrow(
+            () ->
+                new NotFoundException(
+                    "Student inheritance %s not found".formatted(studentInheritanceId)));
+
+    JCourse course =
+        courseRepository
+            .findByRef(courseRef)
+            .orElseThrow(() -> new NotFoundException("Course %s not found".formatted(courseRef)));
+
+    JUser currentUser = currentUser();
+    if (currentUser.getRole() == UserRole.STUDENT) {
+      JStudentInheritance inheritance = currentUser.getStudentInheritance();
+      if (inheritance == null || !inheritance.getId().equals(studentInheritanceId)) {
+        throw new ForbiddenException("Students can only compute their own grades.");
+      }
+    } else {
+      requireAssignedToCourseRead(currentUser, course.getId());
+    }
+
+    BigDecimal weightedAverage =
+        gradeRepository.computeCourseGrade(studentInheritanceId, courseRef);
+    return new CourseGradeOutput(studentInheritanceId, courseRef, weightedAverage);
+  }
+
   private JUser currentUser() {
     return authRepository
         .findById(
@@ -122,5 +158,15 @@ public class GradeService {
                 inheritance.getId(), courseId);
     accessRules.requireAssignedToCourse(
         teacher, courseId, assigned, "Cannot create grade for course %s".formatted(courseId));
+  }
+
+  private void requireAssignedToCourseRead(JUser user, UUID courseId) {
+    JTeacherInheritance inheritance = user.getTeacherInheritance();
+    boolean assigned =
+        inheritance != null
+            && teacherCourseRepository.existsByTeacherInheritanceIdAndCourseId(
+                inheritance.getId(), courseId);
+    accessRules.requireAssignedToCourse(
+        user, courseId, assigned, "Cannot compute grade for course %s".formatted(courseId));
   }
 }

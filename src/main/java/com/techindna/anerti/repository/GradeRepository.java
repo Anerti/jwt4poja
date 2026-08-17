@@ -1,6 +1,7 @@
 package com.techindna.anerti.repository;
 
 import com.techindna.anerti.repository.model.JGrade;
+import java.math.BigDecimal;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -55,4 +56,25 @@ public interface GradeRepository extends JpaRepository<JGrade, UUID> {
       @Param("academicYear") String academicYear,
       @Param("teacherInheritanceId") UUID teacherInheritanceId,
       Pageable pageable);
+
+  @Query(
+      value =
+          """
+          WITH latest_grades AS (
+            SELECT g.value, e.coefficient,
+                   ROW_NUMBER() OVER (PARTITION BY g.exam_id ORDER BY g.created_at DESC) rn
+            FROM jwt4poja_app.grade g
+            JOIN jwt4poja_app.exam e ON e.id = g.exam_id
+            JOIN jwt4poja_app.course c ON c.id = e.course_id
+            WHERE g.student_inheritance_id = :studentInheritanceId
+              AND LOWER(c.ref) = LOWER(:courseRef)
+          )
+          SELECT COALESCE(SUM(value * coefficient), 0) AS weighted_average
+          FROM latest_grades
+          WHERE rn = 1
+          """,
+      nativeQuery = true)
+  BigDecimal computeCourseGrade(
+      @Param("studentInheritanceId") UUID studentInheritanceId,
+      @Param("courseRef") String courseRef);
 }

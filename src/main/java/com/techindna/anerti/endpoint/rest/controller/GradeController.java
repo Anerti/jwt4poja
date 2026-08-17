@@ -1,5 +1,6 @@
 package com.techindna.anerti.endpoint.rest.controller;
 
+import com.techindna.anerti.dto.CourseGradeOutput;
 import com.techindna.anerti.dto.CreateGradeInput;
 import com.techindna.anerti.dto.GradeListResponse;
 import com.techindna.anerti.dto.GradeOutput;
@@ -22,6 +23,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class GradeController {
 
   private final GradeService gradeService;
+
+  @GetMapping("/compute/{studentInheritanceId}/course/{courseRef}")
+  public ResponseEntity<CourseGradeOutput> computeCourseGrade(
+      @PathVariable UUID studentInheritanceId, @PathVariable String courseRef) {
+    return ResponseEntity.ok(gradeService.computeCourseGrade(studentInheritanceId, courseRef));
+  }
 
   @GetMapping("/{studentInheritanceId}")
   public ResponseEntity<GradeListResponse> listGrades(
