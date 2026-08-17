@@ -11,8 +11,6 @@ import org.springframework.stereotype.Component;
 @AllArgsConstructor
 public class GradeValidator {
 
-  private final DataValidator dataValidator;
-
   private static final BigDecimal MIN_VALUE = BigDecimal.ZERO;
   private static final BigDecimal MAX_VALUE = new BigDecimal("20");
 
