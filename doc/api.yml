@@ -1136,11 +1136,12 @@ paths:
       summary: List a student's grades
       description: |
         Lists the grades of the student inheritance record identified by
-        `studentInheritanceId`. `examId` and `academicYear` are exact-match
-        filters. ADMIN and TEACHER can list any student's grades (a TEACHER
-        only sees grades of exams of courses assigned to them); a STUDENT can
-        only list their own grades — the path `studentInheritanceId` is forced
-        to the authenticated student.
+        `studentInheritanceId`. `courseRef` and `academicYear` are filters
+        (`courseRef` is a partial match, `academicYear` is exact). ADMIN and
+        TEACHER can list any student's grades (a TEACHER only sees grades of
+        exams of courses assigned to them); a STUDENT can only list their own
+        grades — the path `studentInheritanceId` is forced to the
+        authenticated student.
       operationId: listGrades
       security:
         - bearerAuth: []
@@ -1151,12 +1152,13 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: examId
+        - name: courseRef
           in: query
           required: false
+          description: Course ref of the exams to filter on (partial match)
           schema:
             type: string
-            format: uuid
+            maxLength: 10
         - name: academicYear
           in: query
           required: false
@@ -1185,49 +1187,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GradeListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /grades/{gradeId}:
-    patch:
-      tags: [grades]
-      summary: Correct a grade (ADMIN, TEACHER)
-      description: |
-        Corrects a grade in place: replaces the grade `value` and requires a
-        `description` (e.g. "transcription error"). A TEACHER can only correct
-        grades of exams of courses assigned to them.
-      operationId: updateGrade
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: gradeId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateGradeInput'
-      responses:
-        '200':
-          description: The corrected grade
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Grade'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2115,21 +2074,6 @@ components:
         examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
         value: 14.5
         description: Final exam
-    UpdateGradeInput:
-      type: object
-      required: [value, description]
-      description: Correction — replaces the grade's `value` and `description`.
-      properties:
-        value:
-          type: number
-          minimum: 0
-          maximum: 20
-        description:
-          type: string
-          description: Mandatory reason for the correction (e.g. "transcription error")
-      example:
-        value: 15
-        description: Transcription error corrected
     GradeReportRequest:
       type: object
       required: [studentId, academicYear]
