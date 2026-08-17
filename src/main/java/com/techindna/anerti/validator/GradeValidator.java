@@ -41,6 +41,11 @@ public class GradeValidator {
     }
   }
 
+  public void validateCourseRef(String courseRef) {
+    dataValidator.checkStringLength("courseRef", courseRef, 10);
+    dataValidator.validateRef(courseRef);
+  }
+
   private void validateValue(BigDecimal value) {
     if (value == null) {
       throw new BadRequestException("value is required and cannot be blank");
