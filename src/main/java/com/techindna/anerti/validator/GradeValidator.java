@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 @AllArgsConstructor
 public class GradeValidator {
 
+  private final DataValidator dataValidator;
+
   private static final BigDecimal MIN_VALUE = BigDecimal.ZERO;
   private static final BigDecimal MAX_VALUE = new BigDecimal("20");
 
@@ -25,6 +27,17 @@ public class GradeValidator {
     validateValue(request.value());
     if (request.description() == null || request.description().isBlank()) {
       throw new UnprocessableContentException("description is required and cannot be blank");
+    }
+  }
+
+  public void validateListFilters(String courseRef, String academicYear) {
+    if (courseRef != null && !courseRef.isBlank()) {
+      dataValidator.checkStringLength("courseRef", courseRef, 10);
+      dataValidator.validateRef(courseRef);
+    }
+    if (academicYear != null && !academicYear.isBlank()) {
+      dataValidator.checkStringLength("academicYear", academicYear, 10);
+      dataValidator.validateAcademicYear(academicYear);
     }
   }
 

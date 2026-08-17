@@ -1136,11 +1136,12 @@ paths:
       summary: List a student's grades
       description: |
         Lists the grades of the student inheritance record identified by
-        `studentInheritanceId`. `examId` and `academicYear` are exact-match
-        filters. ADMIN and TEACHER can list any student's grades (a TEACHER
-        only sees grades of exams of courses assigned to them); a STUDENT can
-        only list their own grades — the path `studentInheritanceId` is forced
-        to the authenticated student.
+        `studentInheritanceId`. `courseRef` and `academicYear` are filters
+        (`courseRef` is a partial match, `academicYear` is exact). ADMIN and
+        TEACHER can list any student's grades (a TEACHER only sees grades of
+        exams of courses assigned to them); a STUDENT can only list their own
+        grades — the path `studentInheritanceId` is forced to the
+        authenticated student.
       operationId: listGrades
       security:
         - bearerAuth: []
@@ -1151,12 +1152,13 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: examId
+        - name: courseRef
           in: query
           required: false
+          description: Course ref of the exams to filter on (partial match)
           schema:
             type: string
-            format: uuid
+            maxLength: 10
         - name: academicYear
           in: query
           required: false
@@ -1195,39 +1197,50 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /grades/{gradeId}:
-    patch:
+  /grades/compute/{studentInheritanceId}/course/{courseRef}:
+    get:
       tags: [grades]
-      summary: Correct a grade (ADMIN, TEACHER)
+      summary: Compute the weighted grade of a student for one course
       description: |
-        Corrects a grade in place: replaces the grade `value` and requires a
-        `description` (e.g. "transcription error"). A TEACHER can only correct
-        grades of exams of courses assigned to them.
-      operationId: updateGrade
+        Computes the weighted average grade of the student identified by
+        `studentInheritanceId` for the course identified by `courseRef`. For
+        each exam of that course the most recent grade (latest `createdAt`)
+        is taken, then the result is:
+
+            weightedAverage = Σ (grade.value × exam.coefficient)
+
+        Because all coefficients of a course sum to 1 this is a standard
+        weighted average. Only exams that have a grade are included; if no
+        grade exists for any exam the weighted average is `0`.
+
+        Role-based visibility:
+        - ADMIN and the owning STUDENT can always compute.
+        - TEACHER can only compute for courses assigned to them.
+
+        Returns 404 when the student, course or exam does not exist.
+      operationId: computeCourseGrade
       security:
         - bearerAuth: []
       parameters:
-        - name: gradeId
+        - name: studentInheritanceId
           in: path
           required: true
           schema:
             type: string
             format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateGradeInput'
+        - name: courseRef
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 10
       responses:
         '200':
-          description: The corrected grade
+          description: Weighted grade for the course
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Grade'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/CourseGradeOutput'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2115,21 +2128,31 @@ components:
         examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
         value: 14.5
         description: Final exam
-    UpdateGradeInput:
+    CourseGradeOutput:
       type: object
-      required: [value, description]
-      description: Correction — replaces the grade's `value` and `description`.
+      required:
+        - studentInheritanceId
+        - courseRef
+        - weightedAverage
       properties:
-        value:
+        studentInheritanceId:
+          type: string
+          format: uuid
+        courseRef:
+          type: string
+          maxLength: 10
+        weightedAverage:
           type: number
           minimum: 0
           maximum: 20
-        description:
-          type: string
-          description: Mandatory reason for the correction (e.g. "transcription error")
+          multipleOf: 0.01
+          description: >-
+            Σ (grade.value × exam.coefficient) over all exams of the course
+            that have a grade.
       example:
-        value: 15
-        description: Transcription error corrected
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        courseRef: EP1
+        weightedAverage: 14.25
     GradeReportRequest:
       type: object
       required: [studentId, academicYear]
