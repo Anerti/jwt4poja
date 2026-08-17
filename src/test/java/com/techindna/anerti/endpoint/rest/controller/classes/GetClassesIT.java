@@ -125,14 +125,15 @@ class GetClassesIT extends FacadeIT {
       saveClass("CLASS" + i, 2020 + i);
     }
 
-    ClassListResponse firstPage = getClasses("?page=1&size=2", adminToken()).getBody();
+    String token = adminToken();
+    ClassListResponse firstPage = getClasses("?page=1&size=2", token).getBody();
     assertThat(firstPage).isNotNull();
     assertThat(firstPage.data()).hasSize(2);
     assertThat(firstPage.meta().page()).isEqualTo(1);
     assertThat(firstPage.meta().size()).isEqualTo(2);
     assertThat(firstPage.meta().total()).isEqualTo(5);
 
-    ClassListResponse secondPage = getClasses("?page=2&size=2", adminToken()).getBody();
+    ClassListResponse secondPage = getClasses("?page=2&size=2", token).getBody();
     assertThat(secondPage).isNotNull();
     assertThat(secondPage.data()).hasSize(2);
     assertThat(secondPage.meta().page()).isEqualTo(2);
