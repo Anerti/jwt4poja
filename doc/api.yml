@@ -1197,6 +1197,60 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /grades/compute/{studentInheritanceId}/course/{courseRef}:
+    get:
+      tags: [grades]
+      summary: Compute the weighted grade of a student for one course
+      description: |
+        Computes the weighted average grade of the student identified by
+        `studentInheritanceId` for the course identified by `courseRef`. For
+        each exam of that course the most recent grade (latest `createdAt`)
+        is taken, then the result is:
+
+            weightedAverage = Σ (grade.value × exam.coefficient)
+
+        Because all coefficients of a course sum to 1 this is a standard
+        weighted average. Only exams that have a grade are included; if no
+        grade exists for any exam the weighted average is `0`.
+
+        Role-based visibility:
+        - ADMIN and the owning STUDENT can always compute.
+        - TEACHER can only compute for courses assigned to them.
+
+        Returns 404 when the student, course or exam does not exist.
+      operationId: computeCourseGrade
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentInheritanceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: courseRef
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 10
+      responses:
+        '200':
+          description: Weighted grade for the course
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseGradeOutput'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /grade-reports:
     post:
       tags: [reports]
@@ -2074,6 +2128,31 @@ components:
         examId: 4b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
         value: 14.5
         description: Final exam
+    CourseGradeOutput:
+      type: object
+      required:
+        - studentInheritanceId
+        - courseRef
+        - weightedAverage
+      properties:
+        studentInheritanceId:
+          type: string
+          format: uuid
+        courseRef:
+          type: string
+          maxLength: 10
+        weightedAverage:
+          type: number
+          minimum: 0
+          maximum: 20
+          multipleOf: 0.01
+          description: >-
+            Σ (grade.value × exam.coefficient) over all exams of the course
+            that have a grade.
+      example:
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        courseRef: EP1
+        weightedAverage: 14.25
     GradeReportRequest:
       type: object
       required: [studentId, academicYear]
