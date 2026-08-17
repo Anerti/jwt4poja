@@ -11,7 +11,7 @@ public class AccessRules {
 
   public void requireAssignedToCourse(JUser user, UUID courseId, boolean assigned) {
     requireAssignedToCourse(
-        user, courseId, assigned, "Cannot access course %s".formatted(courseId));
+        user, courseId, assigned, "Cannot create exam for course %s".formatted(courseId));
   }
 
   public void requireAssignedToCourse(JUser user, UUID courseId, boolean assigned, String message) {
