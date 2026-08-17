@@ -10,8 +10,13 @@ import org.springframework.stereotype.Component;
 public class AccessRules {
 
   public void requireAssignedToCourse(JUser user, UUID courseId, boolean assigned) {
+    requireAssignedToCourse(
+        user, courseId, assigned, "Cannot create exam for course %s".formatted(courseId));
+  }
+
+  public void requireAssignedToCourse(JUser user, UUID courseId, boolean assigned, String message) {
     if (!assigned && (user.getRole() != UserRole.ADMIN)) {
-      throw new ForbiddenException("Cannot create exam for course %s".formatted(courseId));
+      throw new ForbiddenException(message);
     }
   }
 }

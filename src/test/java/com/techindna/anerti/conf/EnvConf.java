@@ -14,7 +14,8 @@ public class EnvConf {
               "test-group-init.sql",
               "test-class-init.sql",
               "test-teacher-course-init.sql",
-              "test-exam-init.sql");
+              "test-exam-init.sql",
+              "test-grade-init.sql");
   static final GenericContainer<?> REDIS =
       new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 
