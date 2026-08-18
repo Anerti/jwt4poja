@@ -162,6 +162,41 @@ class GetGraduationIT extends FacadeIT {
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
   }
 
+  @Test
+  void download_excel_returns_xlsx() {
+    JClass clazz = classRepository.save(JClass.builder().name("Promo 2023").yearOf(2023).build());
+    JStudentInheritance student =
+        studentInheritanceRepository.save(
+            JStudentInheritance.builder()
+                .ref("S002")
+                .level(Level.L2)
+                .learningPath(LearningPath.TN)
+                .studentStatus(StudentStatus.GRADUATED)
+                .classId(clazz.getId())
+                .build());
+    authRepository.save(
+        JUser.builder()
+            .username("graduate2")
+            .password(passwordEncoder.encode("StrongPass12!"))
+            .firstName("Bob")
+            .lastName("Martin")
+            .email("bob@hei.edu")
+            .role(UserRole.STUDENT)
+            .studentInheritance(student)
+            .build());
+
+    ResponseEntity<byte[]> response =
+        restTemplate.exchange(
+            "/graduations/%s/download".formatted(clazz.getId()),
+            HttpMethod.GET,
+            new HttpEntity<>(jsonHeaders(adminToken())),
+            byte[].class);
+
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    assertThat(response.getBody()).isNotNull();
+    assertThat(response.getBody().length).isGreaterThan(0);
+  }
+
   private String adminToken() {
     JUser admin =
         authRepository.save(
