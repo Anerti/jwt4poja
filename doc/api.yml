@@ -2570,7 +2570,7 @@ components:
         weightedAverage: 14.25
     StudentGeneralAverage:
       type: object
-      required: [studentInheritanceId, generalAverage, totalCredits]
+      required: [studentInheritanceId, generalAverage]
       properties:
         studentInheritanceId:
           type: string
@@ -2589,25 +2589,10 @@ components:
             Σ (courseWeightedAverage × course.credits) / Σ course.credits.
             Each courseWeightedAverage is Σ (grade.value × exam.coefficient)
             over all graded exams of that course (coefficients sum to 1).
-        totalCredits:
-          type: integer
-          minimum: 0
-          description: Sum of credits of all courses that contributed to the average.
-        gradedCourses:
-          type: integer
-          minimum: 0
-          description: Number of courses with at least one grade.
-        totalCourses:
-          type: integer
-          minimum: 0
-          description: Total number of courses in the scope (with or without grades).
       example:
         studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         academicYear: '2024-2025'
         generalAverage: 14.25
-        totalCredits: 30
-        gradedCourses: 5
-        totalCourses: 6
     Meta:
       type: object
       required: [page, size, total]
