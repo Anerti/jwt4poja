@@ -1474,6 +1474,68 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /grade-reports:
+    post:
+      tags: [reports]
+      summary: Generate and email the annual grade report (ADMIN)
+      description: |
+        Generates the annual grade report as a PDF for the
+        student identified by `studentInheritanceId` for the given `academicYear`.
+
+        The PDF contains:
+        - Student identity (first name, last name, ref)
+        - Academic year
+        - Per-course breakdown: exam name, grade value, coefficient, and
+          per-course weighted average
+        - General weighted average across all courses
+        - Class ranking (rank among all students in the same class)
+
+        The generated PDF is stored on S3 and sent to the email address of
+        the user who triggered the request, asynchronously via the event
+        pipeline (EventBridge → SQS → Lambda).
+
+        Business rules:
+        1. The student must exist (404 otherwise).
+        2. The student must have at least one grade for the given academic
+           year; otherwise the request is refused (409).
+        3. The student must be enrolled in a class (have a `classId`); a
+           report without a class has no ranking context and is refused (409).
+
+        ADMIN can generate a report for any student.
+      operationId: generateGradeReport
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeReportInput'
+      responses:
+        '202':
+          description: Accepted — PDF generation and email sending queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GradeReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Student has no grades for the given academic year or is not enrolled in a class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /reports/students/{studentInheritanceId}/average:
     get:
       tags: [reports]
@@ -2634,6 +2696,46 @@ components:
             $ref: '#/components/schemas/Grade'
         meta:
           $ref: '#/components/schemas/Meta'
+    GradeReportInput:
+      type: object
+      required: [studentInheritanceId, academicYear]
+      description: >-
+        Identifies the student and the academic year for which to generate the
+        annual grade report PDF.
+      properties:
+        studentInheritanceId:
+          type: string
+          format: uuid
+          description: Student inheritance id of the student to generate the report for.
+        academicYear:
+          type: string
+          maxLength: 10
+          description: Academic year to include in the report (e.g. `2024-2025`).
+      example:
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        academicYear: '2024-2025'
+    GradeReportResponse:
+      type: object
+      required: [message, studentId, academicYear]
+      description: >-
+        Confirmation that the PDF generation and email delivery have been
+        queued asynchronously.
+      properties:
+        message:
+          type: string
+          description: Human-readable confirmation message.
+        studentId:
+          type: string
+          format: uuid
+          description: The student inheritance id the report was generated for.
+        academicYear:
+          type: string
+          maxLength: 10
+          description: The academic year the report covers.
+      example:
+        message: Grade report for academic year 2024-2025 will be sent to your email shortly
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        academicYear: '2024-2025'
     ErrorBody:
       type: object
       required: [status, error, message, timestamp]
