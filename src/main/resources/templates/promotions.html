@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Promotions - HEI</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .btn { background-color: #2196F3; color: white; padding: 8px 16px;
+               text-decoration: none; border-radius: 4px; }
+        .btn:hover { background-color: #0b7dda; }
+    </style>
+</head>
+<body>
+    <h1>Liste des Promotions</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Annee</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="promo : ${promotions}">
+                <td th:text="${promo.name}"></td>
+                <td th:text="${promo.yearOf}"></td>
+                <td>
+                    <a class="btn" th:href="@{/graduations/{id}/download(id=${promo.id})}">
+                        Telecharger les diplomes (XLSX)
+                    </a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <p th:if="${#lists.isEmpty(promotions)}">Aucune promotion disponible.</p>
+</body>
+</html>

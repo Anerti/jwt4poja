@@ -66,6 +66,8 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                     .requestMatchers(HttpMethod.GET, "/exams")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                    .requestMatchers(HttpMethod.GET, "/promotions")
+                    .permitAll()
                     .anyRequest()
                     .authenticated())
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
