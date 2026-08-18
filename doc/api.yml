@@ -25,12 +25,14 @@ tags:
     description: Student accounts and student inheritance records (ADMIN; owner read)
   - name: groups
     description: Student groups (ADMIN manages, TEACHER reads)
+  - name: classes
+    description: Classes and class enrollment (ADMIN manages, TEACHER reads)
   - name: assignments
     description: Course-to-teacher assignments per year (ADMIN)
   - name: grades
     description: Grades (ADMIN, TEACHER for own courses, STUDENT for own grades)
   - name: reports
-    description: Annual grade reports by email and graduation lists
+    description: Class rankings, general averages and downloadable reports (ADMIN, TEACHER)
 paths:
   /auth/login:
     post:
@@ -798,6 +800,65 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
+  /students/{studentId}/enroll:
+    post:
+      tags: [students]
+      summary: Enroll a student in a class (ADMIN)
+      description: |
+        Enrolls the student identified by `studentId` in the class identified
+        by `classId` (sets `student_inheritance.class_id`). The student must
+        have a grade ≥ 10 for every course they have been graded on; if any
+        course weighted average is below 10 the enrollment is refused (409).
+
+        Business rule:
+        1. Look up the student and verify it exists (404 otherwise).
+        2. Verify the class exists (404 otherwise).
+        3. For every course that has at least one grade, compute the
+           weighted average (`Σ grade.value × exam.coefficient`). If any
+           is < 10, return 409 with the list of failing courses.
+        4. Set `student_inheritance.class_id` to the given class.
+        5. Return the updated student payload.
+      operationId: enrollStudentInClass
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollClassInput'
+      responses:
+        '200':
+          description: Student enrolled in the class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserExtendStudent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Student has at least one course with a weighted average below 10
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentRejected'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
   /groups:
     post:
       tags: [groups]
@@ -967,6 +1028,168 @@ paths:
       responses:
         '204':
           description: Deleted — no content
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /classes:
+    post:
+      tags: [classes]
+      summary: Create a class (ADMIN)
+      description: |
+        Creates a class (e.g. `L2 EL 2024`, `L2 TN 2025`). `name` must be
+        unique across classes.
+      operationId: createClass
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClassInput'
+      responses:
+        '201':
+          description: Class created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassOutput'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    get:
+      tags: [classes]
+      summary: List classes (ADMIN, TEACHER)
+      description: |
+        Lists classes ordered by `createdAt`. `search` matches `name`
+        (case-insensitive substring, partial match). `yearOf` filters by
+        exact academic year.
+      operationId: listClasses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: yearOf
+          in: query
+          required: false
+          description: Exact match on the academic year integer.
+          schema:
+            type: integer
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Page of classes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reports/classes/{classId}/ranking:
+    get:
+      tags: [reports]
+      summary: Ranked list of students in a class (ADMIN, TEACHER)
+      description: |
+        Returns every student enrolled in the class identified by `classId`,
+        sorted by general average descending (rank 1 = best). Each entry
+        includes the student's full profile, their rank and their general
+        weighted average.
+
+        Students with no grades at all appear last with an average of 0.
+
+        Role-based visibility:
+        - ADMIN can always rank any class.
+        - TEACHER can rank classes that contain at least one student they
+          teach (i.e. the student has a grade on an exam of a course
+          assigned to the teacher).
+      operationId: getClassRanking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ranked students of the class
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassRankingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /reports/classes/{classId}/ranking/download:
+    get:
+      tags: [reports]
+      summary: Download the class ranking as XLSX
+      description: |
+        Same ranked students as `GET /reports/classes/{classId}/ranking`,
+        exported as an XLSX workbook stored on S3 and streamed to the client.
+        Columns: rank, student ref, first name, last name, general average.
+      operationId: downloadClassRanking
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: classId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: XLSX workbook of the class ranking
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1251,32 +1474,55 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /grade-reports:
-    post:
+  /reports/students/{studentInheritanceId}/average:
+    get:
       tags: [reports]
-      summary: Generate and email an annual grade report (ADMIN)
+      summary: Compute the general average of a student
       description: |
-        Asynchronous. Computes the provisional annual transcript of a student
-        for an academic year (annual general average, validated credits) and
-        sends the PDF by email (S3 + SES), addressed to the student.
-      operationId: generateGradeReport
+        Computes the general weighted average of the student identified by
+        `studentInheritanceId` across all courses. For each course, the most
+        recent grade per exam (latest `createdAt`) is taken, the per-course
+        weighted average is computed as `Σ (grade.value × exam.coefficient)`
+        (coefficients of a course sum to 1), then the general average is:
+
+            generalAverage = Σ (courseWeightedAverage × course.credits)
+                             ─────────────────────────────────────────
+                                        Σ course.credits
+
+        An optional `academicYear` query parameter restricts the calculation
+        to exams of that year. If omitted, all academic years are included.
+
+        Role-based visibility:
+        - ADMIN can always compute.
+        - TEACHER can only compute for students whose graded exams belong to
+          courses assigned to them.
+        - STUDENT can only compute their own average.
+
+        Returns 404 when the student does not exist.
+      operationId: getStudentAverage
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GradeReportRequest'
+      parameters:
+        - name: studentInheritanceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: academicYear
+          in: query
+          required: false
+          description: Exact match on the exam's academic year (e.g. `2024-2025`). Omit to include all years.
+          schema:
+            type: string
+            maxLength: 10
       responses:
-        '202':
-          description: Accepted — the annual transcript will be emailed
+        '200':
+          description: General weighted average
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageBody'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/StudentGeneralAverage'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1285,72 +1531,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /graduations/{promotion}:
-    get:
-      tags: [reports]
-      summary: List the graduates of a promotion, ranked
-      description: |
-        Graduates of the promotion over the 3 years, sorted by rank. A student
-        is a graduate of the promotion if they scored ≥ 10 in every course of
-        their learning path across all 3 academic years. Columns: rank, student
-        id, last name, first name, general average.
-      operationId: getGraduates
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: promotion
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Ranked graduates of the promotion
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GraduatesResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /graduations/{promotion}/download:
-    get:
-      tags: [reports]
-      summary: Download the graduates list as XLSX
-      description: |
-        Same ranked graduates as `GET /graduations/{promotion}`, exported as an
-        XLSX workbook (columns: rank, student id, last name, first name, general
-        average) stored on S3 and streamed to the client.
-      operationId: downloadGraduates
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: promotion
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: XLSX workbook of the graduates list
-          content:
-            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
-              schema:
-                type: string
-                format: binary
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
 components:
@@ -2000,6 +2180,179 @@ components:
           $ref: '#/components/schemas/CourseType'
       example:
         ref: CQ1
+    ClassOutput:
+      type: object
+      required: [id, name, yearOf, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 30
+          description: Class name (e.g. `L2 EL 2024`, `L2 TN 2025`)
+        yearOf:
+          type: integer
+          description: Academic year this class belongs to (e.g. `2024`)
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      example:
+        id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        name: L2 EL 2024
+        yearOf: 2024
+        createdAt: 2023-09-01T08:00:00Z
+        updatedAt: null
+    CreateClassInput:
+      type: object
+      required: [name, yearOf]
+      properties:
+        name:
+          type: string
+          maxLength: 30
+          description: Class name (e.g. `L2 EL 2024`, `L2 TN 2025`)
+        yearOf:
+          type: integer
+          description: Academic year this class belongs to (e.g. `2024`)
+      example:
+        name: L2 EL 2024
+        yearOf: 2024
+    ClassListResponse:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClassOutput'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    ClassRankingResponse:
+      type: object
+      required: [classId, className, yearOf, ranking]
+      properties:
+        classId:
+          type: string
+          format: uuid
+        className:
+          type: string
+          maxLength: 30
+        yearOf:
+          type: integer
+        ranking:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClassRankingEntry'
+          description: Students sorted by general average descending (rank 1 = best).
+      example:
+        classId: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        className: L2 EL 2024
+        yearOf: 2024
+        ranking:
+          - rank: 1
+            studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+            firstName: Marie
+            lastName: Dupont
+            ref: '2023-001'
+            generalAverage: 16.8
+          - rank: 2
+            studentId: 2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
+            firstName: Jean
+            lastName: Bernard
+            ref: '2023-002'
+            generalAverage: 14.2
+    ClassRankingEntry:
+      type: object
+      required: [rank, studentId, firstName, lastName, ref, generalAverage]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+          description: Rank within the class (1 = best average).
+        studentId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        ref:
+          type: string
+          maxLength: 10
+          description: Student inheritance reference.
+        generalAverage:
+          type: number
+          minimum: 0
+          maximum: 20
+          multipleOf: 0.01
+          description: >-
+            Σ (courseWeightedAverage × course.credits) / Σ course.credits.
+            0 when the student has no grades.
+      example:
+        rank: 1
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        firstName: Marie
+        lastName: Dupont
+        ref: '2023-001'
+        generalAverage: 16.8
+    EnrollClassInput:
+      type: object
+      required: [classId]
+      properties:
+        classId:
+          type: string
+          format: uuid
+          description: Class to enroll the student in.
+      example:
+        classId: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+    EnrollmentRejected:
+      type: object
+      required: [studentId, message, failingCourses]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          description: Human-readable explanation of the rejection.
+        failingCourses:
+          type: array
+          items:
+            $ref: '#/components/schemas/FailingCourse'
+          description: List of courses whose weighted average is below 10.
+      example:
+        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        message: 'Enrollment rejected: 1 course(s) with average below 10'
+        failingCourses:
+          - courseRef: EP1
+            courseTitle: Digital Electronics
+            weightedAverage: 8.5
+    FailingCourse:
+      type: object
+      required: [courseRef, courseTitle, weightedAverage]
+      properties:
+        courseRef:
+          type: string
+          maxLength: 10
+        courseTitle:
+          type: string
+          maxLength: 100
+        weightedAverage:
+          type: number
+          minimum: 0
+          maximum: 20
+          multipleOf: 0.01
+          description: The weighted average of the student for this course (below 10).
+      example:
+        courseRef: EP1
+        courseTitle: Digital Electronics
+        weightedAverage: 8.5
     TeacherCourse:
       type: object
       required: [id, teacherId, courseId, assignedAt]
@@ -2153,64 +2506,46 @@ components:
         studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
         courseRef: EP1
         weightedAverage: 14.25
-    GradeReportRequest:
+    StudentGeneralAverage:
       type: object
-      required: [studentId, academicYear]
+      required: [studentInheritanceId, generalAverage, totalCredits]
       properties:
-        studentId:
+        studentInheritanceId:
           type: string
           format: uuid
         academicYear:
-          type: integer
-      example:
-        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
-        academicYear: 2023
-    GraduatedStudent:
-      type: object
-      required: [rank, studentId, firstName, lastName, average]
-      properties:
-        rank:
-          type: integer
-          description: Rank within the promotion (1 = best average)
-        studentId:
           type: string
-          format: uuid
-        firstName:
-          type: string
-        lastName:
-          type: string
-        average:
+          maxLength: 10
+          nullable: true
+          description: The academic year filter that was applied, or null if all years were included.
+        generalAverage:
           type: number
-          description: General average over the 3 years
+          minimum: 0
+          maximum: 20
+          multipleOf: 0.01
+          description: >-
+            Σ (courseWeightedAverage × course.credits) / Σ course.credits.
+            Each courseWeightedAverage is Σ (grade.value × exam.coefficient)
+            over all graded exams of that course (coefficients sum to 1).
+        totalCredits:
+          type: integer
+          minimum: 0
+          description: Sum of credits of all courses that contributed to the average.
+        gradedCourses:
+          type: integer
+          minimum: 0
+          description: Number of courses with at least one grade.
+        totalCourses:
+          type: integer
+          minimum: 0
+          description: Total number of courses in the scope (with or without grades).
       example:
-        rank: 1
-        studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
-        firstName: Marie
-        lastName: Dupont
-        average: 16.8
-    GraduatesResponse:
-      type: object
-      required: [promotion, graduates]
-      properties:
-        promotion:
-          type: string
-        graduates:
-          type: array
-          items:
-            $ref: '#/components/schemas/GraduatedStudent'
-      example:
-        promotion: EL 2026
-        graduates:
-          - rank: 1
-            studentId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
-            firstName: Marie
-            lastName: Dupont
-            average: 16.8
-          - rank: 2
-            studentId: 2c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
-            firstName: Jean
-            lastName: Bernard
-            average: 15.9
+        studentInheritanceId: 6d4e5f6a-7b8c-4d9e-0f1a-2b3c4d5e6f7a
+        academicYear: '2024-2025'
+        generalAverage: 14.25
+        totalCredits: 30
+        gradedCourses: 5
+        totalCourses: 6
     Meta:
       type: object
       required: [page, size, total]
