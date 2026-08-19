@@ -31,12 +31,13 @@ public class ClassService {
   private final ClassMapper classMapper;
 
   @Transactional(readOnly = true)
-  public ClassListResponse listClasses(String search, int page, int size) {
+  public ClassListResponse listClasses(String search, Integer yearOf, int page, int size) {
     classValidator.validateListFilters(search);
     currentUser();
 
     PageRequestData p = PageRequestData.of(page, size, Sort.unsorted());
-    Page<JClass> jClasses = classRepository.search(search, p.pageable());
+    Page<JClass> jClasses =
+        classRepository.search(search, yearOf == null ? null : yearOf, p.pageable());
 
     List<ClassOutput> classes = jClasses.getContent().stream().map(classMapper::toDto).toList();
     return new ClassListResponse(
