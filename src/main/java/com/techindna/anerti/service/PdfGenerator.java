@@ -18,7 +18,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class PdfGenerator {
 
-  public byte[] generateGradeReport(String studentName, String studentRef, List<GradeRow> grades) {
+  public byte[] generateGradeReport(
+      String studentName, String studentRef, String academicYear, List<GradeRow> grades) {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
     Document document = new Document(PageSize.A4, 36, 36, 36, 36);
 
@@ -39,6 +40,10 @@ public class PdfGenerator {
           new Paragraph("Etudiant: %s (%s)".formatted(studentName, studentRef), subtitleFont);
       student.setAlignment(Element.ALIGN_CENTER);
       document.add(student);
+
+      Paragraph year = new Paragraph("Annee academique: %s".formatted(academicYear), subtitleFont);
+      year.setAlignment(Element.ALIGN_CENTER);
+      document.add(year);
       document.add(new Paragraph(" "));
 
       if (grades.isEmpty()) {
