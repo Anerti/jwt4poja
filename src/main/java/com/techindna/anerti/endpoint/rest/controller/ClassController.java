@@ -24,9 +24,11 @@ public class ClassController {
   @GetMapping
   public ResponseEntity<ClassListResponse> listClasses(
       @RequestParam(required = false) String search,
+      @RequestParam(required = false) Integer yearOf,
       @RequestParam(defaultValue = "1") int page,
       @RequestParam(defaultValue = "10") int size) {
-    return ResponseEntity.status(HttpStatus.OK).body(classService.listClasses(search, page, size));
+    return ResponseEntity.status(HttpStatus.OK)
+        .body(classService.listClasses(search, yearOf, page, size));
   }
 
   @PostMapping
