@@ -62,9 +62,10 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "TEACHER")
                     .requestMatchers(HttpMethod.GET, "/grades/**")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
-                    .requestMatchers(HttpMethod.GET, "/reports/classes/**/ranking")
+                    .requestMatchers(HttpMethod.GET, "/reports/classes/{classId}/ranking")
                     .hasAnyRole("ADMIN", "TEACHER")
-                    .requestMatchers(HttpMethod.GET, "/reports/**")
+                    .requestMatchers(
+                        HttpMethod.GET, "/reports/students/{studentInheritanceId}/average")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                     .requestMatchers(HttpMethod.GET, "/exams")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
