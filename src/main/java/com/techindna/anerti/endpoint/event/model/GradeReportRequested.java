@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @EqualsAndHashCode(callSuper = false)
 public class GradeReportRequested extends PojaEvent {
   private UUID studentInheritanceId;
+  private String academicYear;
   private String studentEmail;
 
   @Override
