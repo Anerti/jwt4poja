@@ -120,6 +120,33 @@ class GetClassesIT extends FacadeIT {
   }
 
   @Test
+  void yearOf_filters_exactly() {
+    saveClass("L2-EL-2024", 2024);
+    saveClass("L2-TN-2024", 2024);
+    saveClass("L3-EL-2025", 2025);
+
+    ClassListResponse response = getClasses("?yearOf=2024", adminToken()).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.meta().total()).isEqualTo(2);
+    assertThat(response.data()).hasSize(2);
+    assertThat(response.data()).extracting(ClassOutput::yearOf).containsOnly(2024);
+  }
+
+  @Test
+  void search_and_yearOf_combine() {
+    saveClass("L2-EL-2024", 2024);
+    saveClass("L2-TN-2024", 2024);
+    saveClass("L3-EL-2025", 2025);
+
+    ClassListResponse response = getClasses("?search=EL&yearOf=2024", adminToken()).getBody();
+
+    assertThat(response).isNotNull();
+    assertThat(response.meta().total()).isEqualTo(1);
+    assertThat(response.data().get(0).name()).isEqualTo("L2-EL-2024");
+  }
+
+  @Test
   void pagination_is_honored() {
     for (int i = 0; i < 5; i++) {
       saveClass("CLASS" + i, 2020 + i);
