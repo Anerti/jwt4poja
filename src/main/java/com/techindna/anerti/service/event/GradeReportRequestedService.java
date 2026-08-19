@@ -3,7 +3,7 @@ package com.techindna.anerti.service.event;
 import com.techindna.anerti.endpoint.event.EventProducer;
 import com.techindna.anerti.endpoint.event.model.GradeReportRequested;
 import com.techindna.anerti.endpoint.event.model.SendEmailRequested;
-import com.techindna.anerti.service.GradeReportService;
+import com.techindna.anerti.service.ReportService;
 import java.util.List;
 import java.util.function.Consumer;
 import lombok.AllArgsConstructor;
@@ -15,13 +15,14 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class GradeReportRequestedService implements Consumer<GradeReportRequested> {
 
-  private final GradeReportService gradeReportService;
+  private final ReportService reportService;
   private final EventProducer<SendEmailRequested> emailProducer;
 
   @Override
   public void accept(GradeReportRequested event) {
     try {
-      var result = gradeReportService.generateAndUpload(event.getStudentInheritanceId());
+      var result =
+          reportService.generateAndUpload(event.getStudentInheritanceId(), event.getAcademicYear());
 
       String htmlBody =
           """
