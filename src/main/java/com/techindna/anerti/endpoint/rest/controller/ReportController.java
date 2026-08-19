@@ -2,6 +2,7 @@ package com.techindna.anerti.endpoint.rest.controller;
 
 import com.techindna.anerti.dto.GradeReportInput;
 import com.techindna.anerti.dto.GradeReportResponse;
+import com.techindna.anerti.dto.ClassRankingResponse;
 import com.techindna.anerti.dto.StudentGeneralAverage;
 import com.techindna.anerti.service.ReportService;
 import java.util.UUID;
@@ -21,7 +22,7 @@ public class ReportController {
 
   private final ReportService reportService;
 
-  @GetMapping("/reports/students/{studentInheritanceId}/average")
+  @GetMapping("/students/{studentInheritanceId}/average")
   public ResponseEntity<StudentGeneralAverage> getStudentAverage(
       @PathVariable UUID studentInheritanceId,
       @RequestParam(required = false) String academicYear) {

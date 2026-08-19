@@ -2,6 +2,8 @@ package com.techindna.anerti.service;
 
 import com.techindna.anerti.dto.GradeReportInput;
 import com.techindna.anerti.dto.GradeReportResponse;
+import com.techindna.anerti.dto.ClassRankingEntry;
+import com.techindna.anerti.dto.ClassRankingResponse;
 import com.techindna.anerti.dto.StudentGeneralAverage;
 import com.techindna.anerti.endpoint.event.EventProducer;
 import com.techindna.anerti.endpoint.event.model.GradeReportRequested;
@@ -13,13 +15,16 @@ import com.techindna.anerti.file.bucket.BucketComponent;
 import com.techindna.anerti.repository.AuthRepository;
 import com.techindna.anerti.repository.CourseRepository;
 import com.techindna.anerti.repository.ExamRepository;
+import com.techindna.anerti.repository.ClassRepository;
 import com.techindna.anerti.repository.GradeRepository;
+import com.techindna.anerti.repository.ReportRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JCourse;
 import com.techindna.anerti.repository.model.JExam;
 import com.techindna.anerti.repository.model.JGrade;
 import com.techindna.anerti.repository.model.JStudentInheritance;
+import com.techindna.anerti.repository.model.JClass;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.validator.DataValidator;
 import java.io.File;
@@ -30,6 +35,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -45,6 +51,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class ReportService {
 
+  private final ReportRepository reportRepository;
+  private final ClassRepository classRepository;
   private final GradeRepository gradeRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
   private final AuthRepository authRepository;
@@ -54,6 +62,31 @@ public class ReportService {
   private final CourseRepository courseRepository;
   private final BucketComponent bucketComponent;
   private final PdfGenerator pdfGenerator;
+
+  @Transactional(readOnly = true)
+  public ClassRankingResponse getClassRanking(UUID classId) {
+    JClass clazz =
+        classRepository
+            .findById(classId)
+            .orElseThrow(() -> new NotFoundException("Class %s not found".formatted(classId)));
+
+    List<Object[]> rows = reportRepository.findClassRanking(classId);
+
+    List<ClassRankingEntry> ranking =
+        rows.stream()
+            .map(
+                row ->
+                    new ClassRankingEntry(
+                        ((Number) row[0]).intValue(),
+                        UUID.fromString(row[1].toString()),
+                        (String) row[2],
+                        (String) row[3],
+                        (String) row[4],
+                        new BigDecimal(row[5].toString()).setScale(2)))
+            .toList();
+
+    return new ClassRankingResponse(clazz.getId(), clazz.getName(), clazz.getYearOf(), ranking);
+  }
 
   @Transactional(readOnly = true)
   public StudentGeneralAverage getStudentAverage(UUID studentInheritanceId, String academicYear) {
