@@ -22,14 +22,17 @@ public interface ClassRepository extends JpaRepository<JClass, UUID> {
           FROM jwt4poja_app."class" c
           WHERE (CAST(:search AS text) IS NULL OR :search = ''
             OR LOWER(c.name) LIKE LOWER('%' || :search || '%'))
-          ORDER BY c.year_of DESC, c.name ASC
+            AND (CAST(:yearOf AS int) IS NULL OR c.year_of = :yearOf)
+          ORDER BY c.created_at DESC
           """,
       countQuery =
           """
           SELECT COUNT(*) FROM jwt4poja_app."class" c
           WHERE (CAST(:search AS text) IS NULL OR :search = ''
             OR LOWER(c.name) LIKE LOWER('%' || :search || '%'))
+            AND (CAST(:yearOf AS int) IS NULL OR c.year_of = :yearOf)
           """,
       nativeQuery = true)
-  Page<JClass> search(@Param("search") String search, Pageable pageable);
+  Page<JClass> search(
+      @Param("search") String search, @Param("yearOf") Integer yearOf, Pageable pageable);
 }
