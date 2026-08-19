@@ -2,7 +2,6 @@ package com.techindna.anerti.endpoint.rest.controller;
 
 import com.techindna.anerti.dto.GradeReportInput;
 import com.techindna.anerti.dto.GradeReportResponse;
-import com.techindna.anerti.dto.ClassRankingResponse;
 import com.techindna.anerti.dto.StudentGeneralAverage;
 import com.techindna.anerti.service.ReportService;
 import java.util.UUID;
