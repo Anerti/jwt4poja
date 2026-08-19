@@ -24,6 +24,7 @@ import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.validator.DataValidator;
 import java.io.File;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.time.Instant;
@@ -93,11 +94,13 @@ public class ReportService {
 
   @Transactional
   public GradeReportResponse requestGradeReport(GradeReportInput request) {
-    dataValidator.checkNullData("studentInheritanceId", request.studentInheritanceId().toString());
-    dataValidator.validateAcademicYear(request.academicYear());
-
     UUID studentInheritanceId = request.studentInheritanceId();
     String academicYear = request.academicYear();
+
+    dataValidator.checkNullData(
+        "studentInheritanceId",
+        studentInheritanceId != null ? studentInheritanceId.toString() : null);
+    dataValidator.validateAcademicYear(academicYear);
 
     JStudentInheritance student =
         studentInheritanceRepository
@@ -170,7 +173,7 @@ public class ReportService {
     bucketComponent.upload(tempFile, bucketKey);
     tempFile.delete();
 
-    java.net.URL presignedUrl = bucketComponent.presign(bucketKey, Duration.ofHours(24));
+    URL presignedUrl = bucketComponent.presign(bucketKey, Duration.ofHours(24));
 
     return new ReportResult(presignedUrl.toString(), academicYear);
   }
