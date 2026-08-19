@@ -52,7 +52,7 @@ There is **no public registration**: an `ADMIN` provisions every account through
 
 ## Current state
 
-**Auth + teacher provisioning, course management, group management, student provisioning, assignments and exam management are implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`), `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`), `group` (entity `JGroup` / `Group`, DTOs `GroupOutput` / `CreateGroupInput` / `GroupListResponse`, `POST /groups` + `GET /groups` + `DELETE /groups/{groupId}`), `student_inheritance` (entity `JStudentInheritance`, DTOs `UserExtendStudent` / `StudentInheritance` / `CreateStudentInput`, and `POST /students`), `teacher_course` (entity `JTeacherCourse`, DTOs `TeacherCourse` / `CreateTeacherCourseInput`, and `POST /teacher-courses`), and `exam` (entity `JExam`, DTOs `ExamOutput` / `CreateExamInput` / `ExamListResponse`, `POST /exams` + `GET /exams`). `grade`, `history`, etc. have no Java at all.
+**Auth + teacher provisioning, course management, group management, student provisioning, assignments, exam management and grade reports are implemented; everything else is spec-only.** Ported so far: `user` + `teacher_inheritance` (entities `JUser` / `JTeacherInheritance`, DTOs `UserExtendTeacher` / `TeacherInheritance`, and `POST /teachers`), `course` (entity `JCourse`, DTOs `CourseOutput` / `CreateCourseInput` / `CourseListResponse`, `POST /courses` + public `GET /courses`), `group` (entity `JGroup` / `Group`, DTOs `GroupOutput` / `CreateGroupInput` / `GroupListResponse`, `POST /groups` + `GET /groups` + `DELETE /groups/{groupId}`), `student_inheritance` (entity `JStudentInheritance`, DTOs `UserExtendStudent` / `StudentInheritance` / `CreateStudentInput`, and `POST /students`), `teacher_course` (entity `JTeacherCourse`, DTOs `TeacherCourse` / `CreateTeacherCourseInput`, and `POST /teacher-courses`), `exam` (entity `JExam`, DTOs `ExamOutput` / `CreateExamInput` / `ExamListResponse`, `POST /exams` + `GET /exams`), and `grade report` (service `ReportService`, DTOs `GradeReportInput` / `GradeReportResponse` / `StudentGeneralAverage`, `POST /grade-reports` + `GET /reports/students/{id}/average`). `grade`, `history`, etc. have no Java at all.
 
 ### Implemented endpoints (hand-written, no `@PojaGenerated`)
 
@@ -77,19 +77,23 @@ There is **no public registration**: an `ADMIN` provisions every account through
   - `GET /exams` — 200 `ExamListResponse` (ADMIN + TEACHER + STUDENT); `ref` (course-ref, partial match), exact `academicYear`, inclusive `startDate`/`endDate` filters, `page`/`size` pagination; ordered by `date`; TEACHER scoped to assigned courses via SQL `EXISTS` on `teacher_course`.
 - **Assignments** — `endpoint/rest/controller/TeacherCourseController.java`:
   - `POST /teacher-courses` — 201 `TeacherCourse` (ADMIN-only); validates input, maps unique pair violations to 409.
+- **Reports** — `endpoint/rest/controller/ReportController.java`:
+  - `POST /grade-reports` — 202 `GradeReportResponse` (ADMIN + TEACHER); validates input, checks student exists + enrolled + has grades, fires async `GradeReportRequested` event for PDF generation.
+  - `GET /reports/students/{studentInheritanceId}/average` — 200 `StudentGeneralAverage` (ADMIN + TEACHER + STUDENT); optional `academicYear` query param; STUDENT can only compute own average.
 - **Health (POJA scaffold)** — `GET /ping`, `GET /health/email`, `GET /health/bucket`.
 
 ### Hand-written layer (all ported, none carry `@PojaGenerated`)
 
-- `endpoint/rest/controller/{AuthController, TeacherController, CourseController, StudentController, GroupController, ExamController, TeacherCourseController}`.
-- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/StudentService`, `service/GroupService`, `service/ExamService`, `service/TeacherCourseService`, `service/UserConflictHandler`, `service/PageRequestData` (page/size clamped to 1–100, defaults 1/10), `service/VerificationCodeStore` (Redis 15-min tokens).
+- `endpoint/rest/controller/{AuthController, TeacherController, CourseController, StudentController, GroupController, ExamController, TeacherCourseController, ReportController}`.
+- `service/AuthService`, `service/TeacherService`, `service/CourseService`, `service/StudentService`, `service/GroupService`, `service/ExamService`, `service/TeacherCourseService`, `service/ReportService`, `service/PdfGenerator`, `service/UserConflictHandler`, `service/PageRequestData` (page/size clamped to 1–100, defaults 1/10), `service/VerificationCodeStore` (Redis 15-min tokens).
 - `security/` — `SecurityConfig` (stateless; role enforcement via `requestMatchers(...).hasRole("ADMIN")`), `security/jwt/{JwtTokenProvider, JwtAuthenticationFilter}`, `security/AccessRules` (`requireAssignedToCourse` guard for TEACHER-scoped writes).
-- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, StudentInheritanceRepository, CourseRepository, GroupRepository, ExamRepository, TeacherCourseRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse, JGroup, JClass, JExam, JTeacherCourse}`.
+- `repository/{AuthRepository, UserRepository, TeacherInheritanceRepository, StudentInheritanceRepository, CourseRepository, GroupRepository, ExamRepository, TeacherCourseRepository, GradeRepository}`, `repository/model/{JUser, JTeacherInheritance, JStudentInheritance, JCourse, JGroup, JClass, JExam, JTeacherCourse, JGrade}`.
 - `mapper/UserMapper` (user → JPA / domain), `mapper/TeacherInheritanceMapper` (`CreateTeacherInput` → `JTeacherInheritance`, `JUser` → `UserExtendTeacher`), `mapper/StudentInheritanceMapper` (`CreateStudentInput` → `JStudentInheritance`, `JUser` → `UserExtendStudent`), `mapper/CourseMapper` (`CreateCourseInput` → `JCourse`, `JCourse` → `CourseOutput`), `mapper/GroupMapper` (`CreateGroupInput` → `JGroup`, `JGroup` → `GroupOutput`), `mapper/ExamMapper` (`CreateExamInput` → `JExam`, `JExam` → `ExamOutput`).
 - `validator/DataValidator`, `validator/UserValidator`, `validator/CourseValidator`, `validator/ExamValidator`.
 - `exception/ErrorBody`, `exception/GlobalExceptionHandler`, `exception/http/*` (BadRequest / Conflict / Forbidden / Gone / NotFound / Unauthorized / UnprocessableContent).
 - `entity/User`, `entity/Group` (domain records) and `repository/enums/{UserRole, TeacherStatus, StudentStatus, Level, LearningPath, CourseType}`. `UserRole` already matches the spec triple `ADMIN` / `TEACHER` / `STUDENT` (no legacy `CUSTOMER`).
-- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`, `CreateStudentInput`, `StudentInheritance`, `UserExtendStudent`, `CreateGroupInput`, `GroupOutput`, `GroupListResponse`, `Meta`, `StudentListResponse`, `TeacherListResponse`, `CreateExamInput`, `ExamOutput`, `ExamListResponse`, `CreateTeacherCourseInput`, `TeacherCourse`.
+- `dto/` — `CreateTeacherInput`, `LoginInput`, `MessageBody`, `TeacherInheritance`, `UserExtendTeacher`, `VerifyRegistrationResponse`, `CourseOutput`, `CreateCourseInput`, `CourseListResponse`, `CreateStudentInput`, `StudentInheritance`, `UserExtendStudent`, `CreateGroupInput`, `GroupOutput`, `GroupListResponse`, `Meta`, `StudentListResponse`, `TeacherListResponse`, `CreateExamInput`, `ExamOutput`, `ExamListResponse`, `CreateTeacherCourseInput`, `TeacherCourse`, `GradeReportInput`, `GradeReportResponse`, `StudentGeneralAverage`.
+- `endpoint/event/model/GradeReportRequested` + `service/event/GradeReportRequestedService` (grade-report async pipeline).
 - `endpoint/event/model/SendEmailRequested` + `service/event/SendEmailRequestedService` (auth email pipeline).
 - Mail template `resources/templates/mail/login-verification.html`.
 
@@ -114,12 +118,13 @@ There is **no public registration**: an `ADMIN` provisions every account through
 - `groups/PostGroupsIT`, `groups/GetGroupsIT`, `groups/DeleteGroupsIT`.
 - `assignments/PostTeacherCoursesIT`.
 - `exams/PostExamsIT`, `exams/GetExamsIT`.
+- `reports/PostGradeReportsIT`, `reports/GetStudentAverageIT`.
 
-No ITs yet for grades / reports, nor for `GET/PATCH /teachers/{teacherId}`, `GET/PATCH /students/{studentId}`, `GET/PATCH /courses/{courseId}`, `GET/PATCH /groups/{groupId}`, or the remaining exam paths (`GET/PATCH/DELETE /exams/{examId}`).
+No ITs yet for grades, nor for `GET/PATCH /teachers/{teacherId}`, `GET/PATCH /students/{studentId}`, `GET/PATCH /courses/{courseId}`, `GET/PATCH /groups/{groupId}`, or the remaining exam paths (`GET/PATCH/DELETE /exams/{examId}`).
 
 ### Out of scope right now (spec only, no Java)
 
-Everything under `/grades`, `/grade-reports`, `/graduations`, plus `GET/PATCH /students/{studentId}`, `GET/PATCH /teachers/{teacherId}`, the remaining course paths (`GET/PATCH /courses/{courseId}`), the remaining group paths (`GET/PATCH /groups/{groupId}`) and the remaining exam paths (`GET/PATCH/DELETE /exams/{examId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
+Everything under `/grades`, `/graduations`, plus `GET/PATCH /students/{studentId}`, `GET/PATCH /teachers/{teacherId}`, the remaining course paths (`GET/PATCH /courses/{courseId}`), the remaining group paths (`GET/PATCH /groups/{groupId}`) and the remaining exam paths (`GET/PATCH/DELETE /exams/{examId}`) — along with the associated JPA entities, DTOs, services, mappers, validators, ITs, and the DB migration that materializes the full MCD. The security (`SecurityConfig` role matchers), exception, and validation infrastructure is already in place and reusable.
 
 ## Commands
 
