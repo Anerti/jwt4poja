@@ -81,6 +81,20 @@ public interface GradeRepository extends JpaRepository<JGrade, UUID> {
   @Query(
       value =
           """
+          SELECT COUNT(*)
+          FROM jwt4poja_app.grade g
+          JOIN jwt4poja_app.exam e ON e.id = g.exam_id
+          WHERE g.student_inheritance_id = :studentInheritanceId
+            AND e.academic_year = :academicYear
+          """,
+      nativeQuery = true)
+  long countByStudentAndAcademicYear(
+      @Param("studentInheritanceId") UUID studentInheritanceId,
+      @Param("academicYear") String academicYear);
+
+  @Query(
+      value =
+          """
           WITH lg AS (
             SELECT g.student_inheritance_id, g.exam_id, g.value, g.created_at,
                    e.coefficient, e.course_id,
