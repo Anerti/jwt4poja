@@ -1,5 +1,6 @@
 package com.techindna.anerti.endpoint.rest.controller;
 
+import com.techindna.anerti.dto.ClassRankingResponse;
 import com.techindna.anerti.dto.StudentGeneralAverage;
 import com.techindna.anerti.service.ReportService;
 import java.util.UUID;
@@ -18,6 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReportController {
 
   private final ReportService reportService;
+
+  @GetMapping("/classes/{classId}/ranking")
+  public ResponseEntity<ClassRankingResponse> getClassRanking(@PathVariable UUID classId) {
+    return ResponseEntity.ok(reportService.getClassRanking(classId));
+  }
 
   @GetMapping("/students/{studentInheritanceId}/average")
   public ResponseEntity<StudentGeneralAverage> getStudentAverage(
