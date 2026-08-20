@@ -15,10 +15,19 @@ import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JClass;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.validator.DataValidator;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +66,49 @@ public class ReportService {
             .toList();
 
     return new ClassRankingResponse(clazz.getId(), clazz.getName(), clazz.getYearOf(), ranking);
+  }
+
+  @SneakyThrows
+  public byte[] downloadClassRanking(UUID classId) {
+    ClassRankingResponse response = getClassRanking(classId);
+    return buildXlsx(response);
+  }
+
+  private byte[] buildXlsx(ClassRankingResponse response) throws IOException {
+    try (Workbook workbook = new XSSFWorkbook();
+        ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      Sheet sheet = workbook.createSheet("Ranking");
+
+      CellStyle headerStyle = workbook.createCellStyle();
+      Font headerFont = workbook.createFont();
+      headerFont.setBold(true);
+      headerStyle.setFont(headerFont);
+
+      Row header = sheet.createRow(0);
+      String[] columns = {"Rank", "Student Ref", "First Name", "Last Name", "General Average"};
+      for (int i = 0; i < columns.length; i++) {
+        header.createCell(i).setCellValue(columns[i]);
+        header.getCell(i).setCellStyle(headerStyle);
+      }
+
+      List<ClassRankingEntry> ranking = response.ranking();
+      for (int i = 0; i < ranking.size(); i++) {
+        ClassRankingEntry entry = ranking.get(i);
+        Row row = sheet.createRow(i + 1);
+        row.createCell(0).setCellValue(entry.rank());
+        row.createCell(1).setCellValue(entry.ref());
+        row.createCell(2).setCellValue(entry.firstName());
+        row.createCell(3).setCellValue(entry.lastName());
+        row.createCell(4).setCellValue(entry.generalAverage().doubleValue());
+      }
+
+      for (int i = 0; i < columns.length; i++) {
+        sheet.autoSizeColumn(i);
+      }
+
+      workbook.write(out);
+      return out.toByteArray();
+    }
   }
 
   @Transactional(readOnly = true)
