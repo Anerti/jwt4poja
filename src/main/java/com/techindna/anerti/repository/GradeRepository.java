@@ -2,6 +2,7 @@ package com.techindna.anerti.repository;
 
 import com.techindna.anerti.repository.model.JGrade;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -119,4 +120,33 @@ public interface GradeRepository extends JpaRepository<JGrade, UUID> {
       @Param("studentInheritanceId") UUID studentInheritanceId,
       @Param("academicYear") String academicYear,
       @Param("teacherInheritanceId") UUID teacherInheritanceId);
+
+  @Query(
+      value =
+          """
+          SELECT EXISTS (
+            SELECT 1 FROM jwt4poja_app.grade g
+            JOIN jwt4poja_app.exam e ON e.id = g.exam_id
+            WHERE g.student_inheritance_id = :studentInheritanceId
+              AND e.academic_year = :academicYear)
+          """,
+      nativeQuery = true)
+  boolean existsByStudentInheritanceIdAndAcademicYear(
+      @Param("studentInheritanceId") UUID studentInheritanceId,
+      @Param("academicYear") String academicYear);
+
+  @Query(
+      value =
+          """
+          SELECT DISTINCT c.ref, c.title, c.credits
+          FROM jwt4poja_app.course c
+          JOIN jwt4poja_app.exam e ON e.course_id = c.id
+          JOIN jwt4poja_app.grade g ON g.exam_id = e.id
+          WHERE g.student_inheritance_id = :studentInheritanceId
+            AND e.academic_year = :academicYear
+          """,
+      nativeQuery = true)
+  List<Object[]> findCoursesForStudentInYear(
+      @Param("studentInheritanceId") UUID studentInheritanceId,
+      @Param("academicYear") String academicYear);
 }

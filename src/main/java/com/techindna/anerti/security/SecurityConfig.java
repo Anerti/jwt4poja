@@ -71,6 +71,8 @@ public class SecurityConfig {
                     .requestMatchers(
                         HttpMethod.GET, "/reports/students/{studentInheritanceId}/average")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                    .requestMatchers(HttpMethod.POST, "/grade-reports")
+                    .hasAnyRole("ADMIN", "STUDENT")
                     .requestMatchers(HttpMethod.GET, "/exams")
                     .hasAnyRole("ADMIN", "TEACHER", "STUDENT")
                     .anyRequest()

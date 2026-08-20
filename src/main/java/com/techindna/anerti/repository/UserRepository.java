@@ -2,6 +2,7 @@ package com.techindna.anerti.repository;
 
 import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JUser;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,10 @@ public interface UserRepository extends JpaRepository<JUser, UUID> {
       @Param("teacherStatus") String teacherStatus,
       @Param("role") UserRole role,
       Pageable pageable);
+
+  @Query("SELECT u FROM JUser u WHERE u.studentInheritance.id = :studentInheritanceId")
+  Optional<JUser> findByStudentInheritanceId(
+      @Param("studentInheritanceId") UUID studentInheritanceId);
 
   @Query(
       """
