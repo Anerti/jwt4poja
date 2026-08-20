@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MissingPathVariableException;
@@ -25,6 +26,7 @@ public class GlobalExceptionHandler {
 
   private ResponseEntity<ErrorBody> buildResponse(HttpStatus status, String message) {
     return ResponseEntity.status(status)
+        .contentType(MediaType.APPLICATION_JSON)
         .body(
             ErrorBody.builder()
                 .error(status.getReasonPhrase().toUpperCase())
