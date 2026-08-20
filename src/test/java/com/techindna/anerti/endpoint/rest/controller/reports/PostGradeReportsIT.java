@@ -134,8 +134,7 @@ class PostGradeReportsIT extends FacadeIT {
     saveGrade(student.getId(), exam.getId(), "14", "Final");
 
     ResponseEntity<GradeReportResponse> response =
-        postReport(
-            new GradeReportInput(student.getId(), "2024-2025"), studentToken(studentUser));
+        postReport(new GradeReportInput(student.getId(), "2024-2025"), studentToken(studentUser));
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
     GradeReportResponse body = response.getBody();
@@ -169,8 +168,7 @@ class PostGradeReportsIT extends FacadeIT {
   @Test
   void teacher_role_is_forbidden() {
     ResponseEntity<String> response =
-        postReportError(
-            new GradeReportInput(UUID.randomUUID(), "2024-2025"), teacherToken());
+        postReportError(new GradeReportInput(UUID.randomUUID(), "2024-2025"), teacherToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     assertThat(response.getBody()).contains("Insufficient privileges.");
@@ -239,8 +237,7 @@ class PostGradeReportsIT extends FacadeIT {
         postReportError(new GradeReportInput(null, "2024-2025"), adminToken());
 
     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-    assertThat(response.getBody())
-        .contains("studentInheritanceId is required and cannot be blank");
+    assertThat(response.getBody()).contains("studentInheritanceId is required and cannot be blank");
     verify(eventProducer, never()).accept(any());
   }
 
@@ -284,9 +281,7 @@ class PostGradeReportsIT extends FacadeIT {
   }
 
   private void linkStudentToClass(JStudentInheritance student) {
-    JClass cls =
-        classRepository.save(
-            JClass.builder().name("L2-EL-A").yearOf(2024).build());
+    JClass cls = classRepository.save(JClass.builder().name("L2-EL-A").yearOf(2024).build());
     student.setClassId(cls.getId());
     studentInheritanceRepository.save(student);
   }

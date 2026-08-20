@@ -50,8 +50,7 @@ public class GradeReportService {
     JUser currentUser = currentUser();
 
     if (currentUser.getRole() == UserRole.STUDENT) {
-      JStudentInheritance studentOwn =
-          currentUser.getStudentInheritance();
+      JStudentInheritance studentOwn = currentUser.getStudentInheritance();
       if (studentOwn == null || !studentOwn.getId().equals(studentInheritanceId)) {
         throw new ForbiddenException("Students can only generate their own reports.");
       }

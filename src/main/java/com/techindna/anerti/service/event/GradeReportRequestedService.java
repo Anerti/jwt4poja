@@ -1,5 +1,13 @@
 package com.techindna.anerti.service.event;
 
+import com.lowagie.text.Document;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
 import com.techindna.anerti.endpoint.event.model.GradeReportRequested;
 import com.techindna.anerti.file.bucket.BucketComponent;
 import com.techindna.anerti.mail.Email;
@@ -10,14 +18,6 @@ import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.UserRepository;
 import com.techindna.anerti.repository.model.JStudentInheritance;
 import com.techindna.anerti.repository.model.JUser;
-import com.lowagie.text.Document;
-import com.lowagie.text.Element;
-import com.lowagie.text.Font;
-import com.lowagie.text.FontFactory;
-import com.lowagie.text.PageSize;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.pdf.PdfPTable;
-import com.lowagie.text.pdf.PdfWriter;
 import jakarta.mail.internet.InternetAddress;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -83,20 +83,19 @@ public class GradeReportRequestedService implements Consumer<GradeReportRequeste
       }
     }
 
-    byte[] pdfBytes = buildPdf(student, user, event.getAcademicYear(), courses, generalAverage, rankInfo);
+    byte[] pdfBytes =
+        buildPdf(student, user, event.getAcademicYear(), courses, generalAverage, rankInfo);
     File tempFile = File.createTempFile("grade-report-", ".pdf");
     try {
       Files.write(tempFile.toPath(), pdfBytes);
-      String s3Key =
-          "grade-reports/%s/%s.pdf".formatted(student.getId(), event.getAcademicYear());
+      String s3Key = "grade-reports/%s/%s.pdf".formatted(student.getId(), event.getAcademicYear());
       bucketComponent.upload(tempFile, s3Key);
     } finally {
       Files.deleteIfExists(tempFile.toPath());
     }
 
     String subject = "Grade Report - %s".formatted(event.getAcademicYear());
-    String htmlBody =
-        buildHtmlBody(user, event.getAcademicYear(), generalAverage, rankInfo);
+    String htmlBody = buildHtmlBody(user, event.getAcademicYear(), generalAverage, rankInfo);
 
     File emailAttachment = File.createTempFile("grade-report-email-", ".pdf");
     try {
@@ -104,12 +103,7 @@ public class GradeReportRequestedService implements Consumer<GradeReportRequeste
       InternetAddress recipientAddress = new InternetAddress(event.getRecipientEmail());
       mailer.accept(
           new Email(
-              recipientAddress,
-              List.of(),
-              List.of(),
-              subject,
-              htmlBody,
-              List.of(emailAttachment)));
+              recipientAddress, List.of(), List.of(), subject, htmlBody, List.of(emailAttachment)));
     } finally {
       Files.deleteIfExists(emailAttachment.toPath());
     }
@@ -138,7 +132,8 @@ public class GradeReportRequestedService implements Consumer<GradeReportRequeste
     document.add(new Paragraph(" "));
 
     document.add(new Paragraph("Academic Year: " + academicYear, headerFont));
-    document.add(new Paragraph("Student: " + user.getFirstName() + " " + user.getLastName(), normalFont));
+    document.add(
+        new Paragraph("Student: " + user.getFirstName() + " " + user.getLastName(), normalFont));
     document.add(new Paragraph("Reference: " + student.getRef(), normalFont));
     document.add(new Paragraph(" "));
 
@@ -146,7 +141,7 @@ public class GradeReportRequestedService implements Consumer<GradeReportRequeste
       document.add(new Paragraph("Per-Course Breakdown", headerFont));
       PdfPTable table = new PdfPTable(3);
       table.setWidthPercentage(100);
-      table.setWidths(new float[]{50, 25, 25});
+      table.setWidths(new float[] {50, 25, 25});
       table.addCell("Course");
       table.addCell("Credits");
       table.addCell("Weighted Average");
@@ -155,8 +150,7 @@ public class GradeReportRequestedService implements Consumer<GradeReportRequeste
         String ref = (String) row[0];
         String title2 = (String) row[1];
         int credits = ((Number) row[2]).intValue();
-        BigDecimal avg =
-            gradeRepository.computeCourseGrade(student.getId(), ref);
+        BigDecimal avg = gradeRepository.computeCourseGrade(student.getId(), ref);
         table.addCell(ref + " - " + title2);
         table.addCell(String.valueOf(credits));
         table.addCell(avg != null ? avg.setScale(2, RoundingMode.HALF_UP).toString() : "N/A");
@@ -165,7 +159,9 @@ public class GradeReportRequestedService implements Consumer<GradeReportRequeste
       document.add(new Paragraph(" "));
     }
 
-    document.add(new Paragraph("General Average: " + generalAverage.setScale(2, RoundingMode.HALF_UP), headerFont));
+    document.add(
+        new Paragraph(
+            "General Average: " + generalAverage.setScale(2, RoundingMode.HALF_UP), headerFont));
     if (!rankInfo.isEmpty()) {
       document.add(new Paragraph("Class Ranking: " + rankInfo, headerFont));
     }
