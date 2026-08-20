@@ -2,6 +2,7 @@ package com.techindna.anerti.exception;
 
 import com.techindna.anerti.exception.http.BadRequestException;
 import com.techindna.anerti.exception.http.ConflictException;
+import com.techindna.anerti.exception.http.EnrollmentRejectedException;
 import com.techindna.anerti.exception.http.ForbiddenException;
 import com.techindna.anerti.exception.http.GoneException;
 import com.techindna.anerti.exception.http.NotFoundException;
@@ -81,6 +82,13 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ConflictException.class)
   public ResponseEntity<ErrorBody> handleConflict(ConflictException ex) {
     return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler(EnrollmentRejectedException.class)
+  public ResponseEntity<Object> handleEnrollmentRejected(EnrollmentRejectedException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(ex.getBody());
   }
 
   @ExceptionHandler(UnauthorizedException.class)

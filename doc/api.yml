@@ -168,79 +168,6 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /courses/{courseId}:
-    get:
-      tags: [courses]
-      summary: Get a course by id (ADMIN, TEACHER)
-      operationId: getCourse
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: courseId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The requested course
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CourseOutput'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      tags: [courses]
-      summary: Partially update a course (ADMIN)
-      description: |
-        Partially updates the course. `ref`, `title`, `type` and `credits` can
-        all be modified; only present fields are applied. A `ref` change must
-        stay unique.
-      operationId: updateCourse
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: courseId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCourseInput'
-      responses:
-        '200':
-          description: The updated course
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CourseOutput'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
   /exams:
     post:
       tags: [exams]
@@ -350,108 +277,6 @@ paths:
           $ref: '#/components/responses/UnprocessableContent'
         '500':
           $ref: '#/components/responses/InternalServerError'
-  /exams/{examId}:
-    get:
-      tags: [exams]
-      summary: Get an exam by id (ADMIN, TEACHER)
-      operationId: getExam
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: examId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The requested exam
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Exam'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      tags: [exams]
-      summary: Partially update an exam (ADMIN, TEACHER)
-      description: |
-        Only present fields are applied. ADMIN can update any exam; a TEACHER
-        can only update exams of courses assigned to them and cannot change the
-        `courseId` (an exam stays attached to the course it was created for).
-      operationId: updateExam
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: examId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateExamInput'
-      responses:
-        '200':
-          description: The updated exam
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Exam'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    delete:
-      tags: [exams]
-      summary: Delete an exam (ADMIN, TEACHER)
-      description: |
-        ADMIN can delete any exam; a TEACHER can only delete exams of courses
-        assigned to them. Refused (409) when grades still reference it.
-      operationId: deleteExam
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: examId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Deleted — no content
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
   /teachers:
     post:
       tags: [teachers]
@@ -535,76 +360,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /teachers/{teacherId}:
-    get:
-      tags: [teachers]
-      summary: Get a teacher by id (ADMIN)
-      operationId: getTeacher
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: teacherId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The requested teacher
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserExtendTeacher'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      tags: [teachers]
-      summary: Partially update a teacher (ADMIN)
-      description: Only present fields are applied. A `ref` change must stay unique.
-      operationId: updateTeacher
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: teacherId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateTeacherInput'
-      responses:
-        '200':
-          description: The updated teacher
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserExtendTeacher'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
         '500':
@@ -722,80 +477,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /students/{studentId}:
-    get:
-      tags: [students]
-      summary: Get a student by id
-      description: ADMIN, a TEACHER, or the STUDENT who owns the record.
-      operationId: getStudent
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: studentId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The requested student
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserExtendStudent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      tags: [students]
-      summary: Partially update a student (ADMIN)
-      description: |
-        Only present fields are applied. Marking a student `GRADUATED` with a
-        `graduationYear` sets their graduation year. A `ref` or `className`
-        change must stay unique.
-      operationId: updateStudent
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: studentId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateStudentInput'
-      responses:
-        '200':
-          description: The updated student
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserExtendStudent'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
         '500':
@@ -942,75 +623,6 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
   /groups/{groupId}:
-    get:
-      tags: [groups]
-      summary: Get a group by id (ADMIN, TEACHER)
-      operationId: getGroup
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: groupId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: The requested group
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GroupOutput'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    patch:
-      tags: [groups]
-      summary: Partially update a group (ADMIN)
-      description: Only present fields are applied. A `ref` change must stay unique.
-      operationId: updateGroup
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: groupId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateGroupInput'
-      responses:
-        '200':
-          description: The updated group
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GroupOutput'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
     delete:
       tags: [groups]
       summary: Delete a group (ADMIN)
@@ -1235,84 +847,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-    get:
-      tags: [assignments]
-      summary: List teacher-course assignments
-      description: |
-        Lists assignments ordered by `assignedAt`. Each item embeds the full
-        teacher user (with its inheritance record) and the full course. ADMIN sees all
-        assignments; a TEACHER only sees the courses assigned to themselves.
-        `teacherId` and `courseId` are exact-match filters.
-      operationId: listTeacherCourses
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: teacherId
-          in: query
-          required: false
-          schema:
-            type: string
-            format: uuid
-        - name: courseId
-          in: query
-          required: false
-          schema:
-            type: string
-            format: uuid
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            default: 1
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-      responses:
-        '200':
-          description: Page of assignments
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TeacherCourseListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/UnprocessableContent'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
-  /teacher-courses/{teacherCourseId}:
-    delete:
-      tags: [assignments]
-      summary: Remove a teacher-course assignment (ADMIN)
-      operationId: deleteTeacherCourse
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: teacherCourseId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Deleted — no content
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalServerError'
   /grades:
@@ -1845,26 +1379,6 @@ components:
         title: Digital Electronics
         type: EL
         credits: 6
-    UpdateCourseInput:
-      type: object
-      description: Partial update — only present fields are applied
-      properties:
-        ref:
-          type: string
-          maxLength: 10
-        title:
-          type: string
-          maxLength: 100
-          pattern: '^[A-Za-z0-9èéê -]+$'
-          description: Course title. May only contain letters, numbers, spaces, and the symbols `- è é ê`.
-        type:
-          $ref: '#/components/schemas/CourseType'
-        credits:
-          type: integer
-          minimum: 1
-          maximum: 30
-      example:
-        title: Digital Electronics (updated)
     Exam:
       type: object
       required: [id, courseId, coefficient, academicYear, date, createdAt]
@@ -1928,25 +1442,6 @@ components:
         coefficient: 0.5
         academicYear: '2024-2025'
         date: 2024-01-15T09:00:00Z
-    UpdateExamInput:
-      type: object
-      description: Partial update — only present fields are applied
-      properties:
-        courseId:
-          type: string
-          format: uuid
-        coefficient:
-          type: number
-          exclusiveMinimum: 0
-          multipleOf: 0.01
-        academicYear:
-          type: string
-          maxLength: 10
-        date:
-          type: string
-          format: date-time
-      example:
-        coefficient: 0.2
     TeacherInheritance:
       type: object
       required: [id, ref, teacherStatus]
@@ -2033,21 +1528,6 @@ components:
         ref: T001
         joinedAt: 2023-09-01T08:00:00Z
         teacherStatus: ACTIVE
-    UpdateTeacherInput:
-      type: object
-      description: Partial update — only present fields are applied
-      properties:
-        ref:
-          type: string
-          maxLength: 10
-        joinedAt:
-          type: string
-          format: date-time
-          nullable: true
-        teacherStatus:
-          $ref: '#/components/schemas/TeacherStatus'
-      example:
-        teacherStatus: INACTIVE
     StudentInheritance:
       type: object
       required: [id, ref, level, learningPath, studentStatus]
@@ -2169,33 +1649,6 @@ components:
         learningPath: EL
         groupId: 7e5f6a7b-8c9d-4e0f-1a2b-3c4d5e6f7a8b
         classId: c1d2e3f4-5a6b-4c7d-8e9f-0a1b2c3d4e5f
-    UpdateStudentInput:
-      type: object
-      description: Partial update — only present fields are applied
-      properties:
-        ref:
-          type: string
-          maxLength: 10
-        joinedAt:
-          type: string
-          format: date-time
-          nullable: true
-        level:
-          $ref: '#/components/schemas/Level'
-        learningPath:
-          $ref: '#/components/schemas/LearningPath'
-        studentStatus:
-          $ref: '#/components/schemas/StudentStatus'
-        graduationYear:
-          type: integer
-          nullable: true
-        className:
-          type: string
-          maxLength: 30
-          nullable: true
-      example:
-        studentStatus: GRADUATED
-        graduationYear: 2026
     GroupOutput:
       type: object
       required: [id, ref, type, createdAt]
@@ -2231,17 +1684,6 @@ components:
       example:
         ref: CQ1
         type: COMMON
-    UpdateGroupInput:
-      type: object
-      description: Partial update — only present fields are applied
-      properties:
-        ref:
-          type: string
-          maxLength: 10
-        type:
-          $ref: '#/components/schemas/CourseType'
-      example:
-        ref: CQ1
     ClassOutput:
       type: object
       required: [id, name, yearOf, createdAt]
@@ -2436,45 +1878,6 @@ components:
         teacherId: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
         courseId: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
         assignedAt: 2023-09-01T08:00:00Z
-    TeacherCourseDetail:
-      type: object
-      required: [id, teacher, course, assignedAt]
-      properties:
-        id:
-          type: string
-          format: uuid
-        teacher:
-          $ref: '#/components/schemas/UserExtendTeacher'
-        course:
-          $ref: '#/components/schemas/CourseOutput'
-        assignedAt:
-          type: string
-          format: date-time
-      example:
-        id: 8f6a7b8c-9d0e-4f1a-2b3c-4d5e6f7a8b9c
-        teacher:
-          id: 2f4e9b2a-1c4e-4a9d-8f2b-5e7a1c0d9f21
-          username: p.martin
-          firstName: Paul
-          lastName: Martin
-          email: paul.martin@hacheuil.edu
-          role: TEACHER
-          createdAt: 2023-09-01T08:00:00Z
-          updatedAt: null
-          teacherInheritance:
-            id: 5c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f
-            ref: T001
-            joinedAt: 2023-09-01T08:00:00Z
-            teacherStatus: ACTIVE
-        course:
-          id: 8a1f2b3c-4d5e-4f6a-9b0c-1d2e3f4a5b6c
-          ref: EP1
-          title: Digital Electronics
-          type: EL
-          credits: 6
-          createdAt: 2023-09-01T08:00:00Z
-          updatedAt: null
-        assignedAt: 2023-09-01T08:00:00Z
     CreateTeacherCourseInput:
       type: object
       required: [teacherId, courseId, assignedAt]
@@ -2659,16 +2062,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/GroupOutput'
-        meta:
-          $ref: '#/components/schemas/Meta'
-    TeacherCourseListResponse:
-      type: object
-      required: [data, meta]
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/TeacherCourseDetail'
         meta:
           $ref: '#/components/schemas/Meta'
     GradeListResponse:

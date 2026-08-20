@@ -1,12 +1,18 @@
 package com.techindna.anerti.service;
 
 import com.techindna.anerti.dto.CreateStudentInput;
+import com.techindna.anerti.dto.EnrollClassInput;
+import com.techindna.anerti.dto.EnrollmentRejected;
+import com.techindna.anerti.dto.FailingCourse;
 import com.techindna.anerti.dto.Meta;
 import com.techindna.anerti.dto.StudentListResponse;
 import com.techindna.anerti.dto.UserExtendStudent;
+import com.techindna.anerti.exception.http.EnrollmentRejectedException;
 import com.techindna.anerti.exception.http.NotFoundException;
 import com.techindna.anerti.mapper.StudentInheritanceMapper;
 import com.techindna.anerti.mapper.UserMapper;
+import com.techindna.anerti.repository.ClassRepository;
+import com.techindna.anerti.repository.GradeRepository;
 import com.techindna.anerti.repository.StudentInheritanceRepository;
 import com.techindna.anerti.repository.UserRepository;
 import com.techindna.anerti.repository.enums.LearningPath;
@@ -16,6 +22,8 @@ import com.techindna.anerti.repository.enums.UserRole;
 import com.techindna.anerti.repository.model.JStudentInheritance;
 import com.techindna.anerti.repository.model.JUser;
 import com.techindna.anerti.validator.StudentValidator;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,6 +39,8 @@ public class StudentService {
 
   private final UserRepository userRepository;
   private final StudentInheritanceRepository studentInheritanceRepository;
+  private final ClassRepository classRepository;
+  private final GradeRepository gradeRepository;
   private final StudentValidator studentValidator;
   private final UserMapper userMapper;
   private final StudentInheritanceMapper studentInheritanceMapper;
@@ -88,5 +98,46 @@ public class StudentService {
       userConflictHandler.conflictFrom(e, request.username(), request.email(), request.ref());
       throw e;
     }
+  }
+
+  @Transactional
+  public UserExtendStudent enrollStudentInClass(
+      java.util.UUID studentId, EnrollClassInput request) {
+    studentValidator.validateEnrollStudent(request);
+
+    JUser jUser =
+        userRepository
+            .findById(studentId)
+            .orElseThrow(() -> new NotFoundException("Student not found: " + studentId));
+
+    if (jUser.getStudentInheritance() == null) {
+      throw new NotFoundException("Student inheritance not found for: " + studentId);
+    }
+
+    classRepository
+        .findById(request.classId())
+        .orElseThrow(() -> new NotFoundException("Class not found: " + request.classId()));
+
+    List<Object[]> failingRows =
+        gradeRepository.findFailingCourses(jUser.getStudentInheritance().getId());
+
+    if (!failingRows.isEmpty()) {
+      List<FailingCourse> failingCourses = new ArrayList<>();
+      for (Object[] row : failingRows) {
+        failingCourses.add(
+            new FailingCourse((String) row[0], (String) row[1], (BigDecimal) row[2]));
+      }
+      throw new EnrollmentRejectedException(
+          new EnrollmentRejected(
+              studentId,
+              "Enrollment rejected: %d course(s) with average below 10"
+                  .formatted(failingCourses.size()),
+              failingCourses));
+    }
+
+    jUser.getStudentInheritance().setClassId(request.classId());
+    userRepository.saveAndFlush(jUser);
+
+    return studentInheritanceMapper.toDto(jUser);
   }
 }
