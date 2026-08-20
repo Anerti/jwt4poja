@@ -5,7 +5,9 @@ import com.techindna.anerti.dto.StudentGeneralAverage;
 import com.techindna.anerti.service.ReportService;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +25,19 @@ public class ReportController {
   @GetMapping("/classes/{classId}/ranking")
   public ResponseEntity<ClassRankingResponse> getClassRanking(@PathVariable UUID classId) {
     return ResponseEntity.ok(reportService.getClassRanking(classId));
+  }
+
+  @GetMapping("/classes/{classId}/ranking/download")
+  public ResponseEntity<byte[]> downloadClassRanking(@PathVariable UUID classId) {
+    byte[] xlsx = reportService.downloadClassRanking(classId);
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=class-ranking-%s.xlsx".formatted(classId))
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(xlsx);
   }
 
   @GetMapping("/students/{studentInheritanceId}/average")
