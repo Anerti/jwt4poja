@@ -149,4 +149,28 @@ public interface GradeRepository extends JpaRepository<JGrade, UUID> {
   List<Object[]> findCoursesForStudentInYear(
       @Param("studentInheritanceId") UUID studentInheritanceId,
       @Param("academicYear") String academicYear);
+
+  @Query(
+      value =
+          """
+          WITH latest_grades AS (
+            SELECT g.value, e.coefficient, e.course_id,
+                   ROW_NUMBER() OVER (PARTITION BY g.exam_id ORDER BY g.created_at DESC) rn
+            FROM jwt4poja_app.grade g
+            JOIN jwt4poja_app.exam e ON e.id = g.exam_id
+            WHERE g.student_inheritance_id = :studentInheritanceId
+          ),
+          course_averages AS (
+            SELECT lg.course_id, SUM(lg.value * lg.coefficient) AS weighted_average
+            FROM latest_grades lg
+            WHERE lg.rn = 1
+            GROUP BY lg.course_id
+          )
+          SELECT c.ref, c.title, ca.weighted_average
+          FROM course_averages ca
+          JOIN jwt4poja_app.course c ON c.id = ca.course_id
+          WHERE ca.weighted_average < 10
+          """,
+      nativeQuery = true)
+  List<Object[]> findFailingCourses(@Param("studentInheritanceId") UUID studentInheritanceId);
 }
