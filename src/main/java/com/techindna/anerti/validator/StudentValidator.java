@@ -1,6 +1,7 @@
 package com.techindna.anerti.validator;
 
 import com.techindna.anerti.dto.CreateStudentInput;
+import com.techindna.anerti.dto.EnrollClassInput;
 import com.techindna.anerti.exception.http.UnprocessableContentException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -26,6 +27,12 @@ public class StudentValidator {
 
     if (request.learningPath() == null) {
       throw new UnprocessableContentException("learningPath is required and cannot be blank");
+    }
+  }
+
+  public void validateEnrollStudent(EnrollClassInput request) {
+    if (request.classId() == null) {
+      throw new UnprocessableContentException("classId is required and cannot be blank");
     }
   }
 
