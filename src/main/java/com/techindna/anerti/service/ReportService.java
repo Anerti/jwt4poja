@@ -18,6 +18,7 @@ import com.techindna.anerti.validator.DataValidator;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -62,7 +63,7 @@ public class ReportService {
                         (String) row[2],
                         (String) row[3],
                         (String) row[4],
-                        new BigDecimal(row[5].toString()).setScale(2)))
+                        new BigDecimal(row[5].toString()).setScale(2, RoundingMode.HALF_UP)))
             .toList();
 
     return new ClassRankingResponse(clazz.getId(), clazz.getName(), clazz.getYearOf(), ranking);
